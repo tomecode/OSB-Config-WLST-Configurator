@@ -22,7 +22,7 @@ SETLOCAL enabledelayedexpansion
 for %%i in (%OSB_HOME%\lib\modules\*.jar) do call :AddToPath %%i
 for %%i in (%OSB_HOME%\modules\*.jar) do call :AddToPath %%i
 
-java -Dweblogic.wlstHome=%temp%\osbCustomizer\ weblogic.WLST -i osbCustomizer.py %*
+java -Dfile.encoding=UTF-8 -Dweblogic.wlstHome=%temp%\osbCustomizer\ weblogic.WLST -i osbCustomizer.py %*
 
 :AddToPath
 SET CLASSPATH=%CLASSPATH%;%1

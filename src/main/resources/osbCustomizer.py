@@ -1,4 +1,4 @@
-7####################################################################
+####################################################################
 #
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
@@ -49,7 +49,8 @@ from com.bea.wli.sb.uddi import UDDIRegistryEntry;
 from com.bea.wli.sb.security.accesscontrol.config import PolicyContainerType;
 from com.bea.wli.sb.security.accesscontrol.config import ProviderPolicyContainerType;
 
-
+from com.bea.wli.sb.resources.proxyserver.config import ProxyServerDocument;
+from com.bea.wli.sb.resources.proxyserver.config import ProxyServerParams;
 
 
 from com.bea.wli.sb.util import Refs
@@ -310,6 +311,12 @@ def getHttpInboundProperties(serviceDefinition):
 		httpInboundProperties= httpEndPointConfiguration.addNewInboundProperties();
 	return httpInboundProperties
 
+def getHttpOutboundProperties(serviceDefinition):
+	httpEndPointConfiguration = getHttpEndPointConfiguration(serviceDefinition)
+	outboundProperties= httpEndPointConfiguration.getOutboundProperties()
+	if outboundProperties == None:
+		outboundProperties= httpEndPointConfiguration.addNewOutboundProperties();
+	return outboundProperties
 def getHttpEndPointConfiguration(serviceDefinition):
 	HttpEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
 	return HttpEndPointConfiguration
@@ -438,6 +445,38 @@ def smtp_smtpserver_password(entry, val):
 	entry.setPassword(val)
 
 #===================================================================
+####	Proxy Server
+#===================================================================
+	
+def proxyserver_proxyserver_description(entry, val):
+	entry.getProxyServer().setDescription(val)
+
+def proxyserver_proxyserver_username(entry, val):
+	entry.getProxyServer().setUsername(val)
+
+def proxyserver_proxyserver_password(entry, val):
+	entry.getProxyServer().setPassword(val)
+
+def proxyserver_proxyserver_servertable(entry, val):
+	entry.getProxyServer().getServerTable().setServerArray(None)
+	list=[]
+	for v in val:
+		param  = ProxyServerParams.Factory.newInstance()
+		param.setHost(v)
+		params=val[v]
+		for p in params:
+			if p =='Port':
+				param.setPort(params[p])
+			elif p =='SslPort':
+				param.setSslPort(params[p])
+			else:
+				print 'dd'
+				
+		list.append(param)
+	entry.getProxyServer().getServerTable().setServerArray(list)
+
+
+#===================================================================
 ####	Proxy Service: LOCAL
 #===================================================================
 
@@ -464,8 +503,7 @@ def http_proxyservice_endpointuri(entry, val):
 	changeEndpointUri(convertToTuple(val),entry)
 
 def http_proxyservice_requestencoding(entry, val):
-	getHttpEndPointConfiguration(entry).setResponseEncoding(val)
-
+	getHttpEndPointConfiguration(entry).setRequestEncoding(val)
 def http_proxyservice_responseencoding(entry, val):
 	getHttpEndPointConfiguration(entry).setResponseEncoding(val)
 
@@ -545,6 +583,29 @@ def jms_proxyservice_destinationtypequeue(entry, val):
 def jms_proxyservice_description(entry, val):
 	entry.getCoreEntry().setDescription(val)
 
+
+#===================================================================	
+####	BusinessService: Transport Type: HTTP
+#===================================================================
+
+def http_businessservice_description(entry, val):
+	entry.getCoreEntry().setDescription(val)	
+
+def http_businessservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def http_businessservice_readtimeout(entry, val):
+	getHttpOutboundProperties(entry).setTimeout(val)
+	
+def http_businessservice_requestencoding(entry, val):
+	getHttpEndPointConfiguration(entry).setRequestEncoding(val)
+
+def http_businessservice_responseencoding(entry, val):
+	getHttpEndPointConfiguration(entry).setResponseEncoding(val)
+
+def http_businessservice_connectiontimeout(entry, val):
+	getHttpOutboundProperties(entry).setConnectionTimeout(val)
+
 ####	###############################################################################################################################################
 ####	###############################################################################################################################################
 ####								
@@ -567,6 +628,8 @@ def loadEntryFactory(jarEntry):
 		return JndiProviderEntry.Factory.parse(ByteArrayInputStream(jarEntry.getData()))
 	elif jarEntry.getExtension()=='SMTPServer'.lower():
 		return SmtpServerEntry.Factory.parse(ByteArrayInputStream(jarEntry.getData()))
+	elif jarEntry.getExtension()=='ProxyServer'.lower():
+		return ProxyServerDocument.Factory.parse(ByteArrayInputStream(jarEntry.getData()))	
 	else:
 		return None
 
@@ -575,10 +638,9 @@ def lookupCustomizationFunction(functionName, parent,entry):
 	
 	for setFunction in reverseDict(parent):
 		impleSetFunction= functionName + '_' + setFunction
-
-		if isDict(parent[setFunction]):
-			#if len(parent[dd])>0:		
-			lookupCustomizationFunction(impleSetFunction, parent[setFunction],entry)
+		#if isDict(parent[setFunction]):
+			#lookupCustomizationFunction(impleSetFunction, parent[setFunction],entry)
+			#globals()[impleSetFunction.lower()](entry, parent[setFunction])
 		
 		globals()[impleSetFunction.lower()](entry, parent[setFunction])
 		print LOG_CUST_FUNCTION + setFunction
