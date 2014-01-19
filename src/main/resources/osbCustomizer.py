@@ -7,6 +7,7 @@
 #
 ####################################################################
 
+
 import sys, traceback
 import os
 import os.path
@@ -559,6 +560,10 @@ def jms_proxyservice_isrequired(entry, val):
 def jms_proxyservice_sametxforresponse(entry, val):
 	getTransactions(entry).setSameTxForResponse(val)
 	
+def jms_proxyservice_destinationtypequeue(entry, val):
+	lookupCustomizationFunction(sys._getframe().f_code.co_name, val, entry)
+
+
 def jms_proxyservice_destinationtypequeue_responsepattern(entry, val):
 	if val == 'JMS_CORRELATION_ID':
 		getJmsInboundProperties(entry).setResponsePattern(JmsResponsePatternEnum.JMS_CORRELATION_ID)
@@ -576,9 +581,6 @@ def jms_proxyservice_destinationtypequeue_responsemessagetype(entry, val):
 		getJmsInboundProperties(entry).setResponseMessageType(JmsMessageTypeEnum.BYTES)
 	else:
 		getJmsInboundProperties(entry).setResponseMessageType(JmsMessageTypeEnum.TEXT)
-
-def jms_proxyservice_destinationtypequeue(entry, val):
-	empty=''
 
 def jms_proxyservice_description(entry, val):
 	entry.getCoreEntry().setDescription(val)
@@ -633,11 +635,11 @@ def loadEntryFactory(jarEntry):
 	else:
 		return None
 
+
 def lookupCustomizationFunction(functionName, parent,entry):
-	#print '' + functionName
-	
 	for setFunction in reverseDict(parent):
 		impleSetFunction= functionName + '_' + setFunction
+		
 		#if isDict(parent[setFunction]):
 			#lookupCustomizationFunction(impleSetFunction, parent[setFunction],entry)
 			#globals()[impleSetFunction.lower()](entry, parent[setFunction])
@@ -678,8 +680,8 @@ def customizeSbConfigFile(customizationFile,path):
 
 	#generate new SB Config
 	return osbJarEntries
+	
 
-		
 def executeCustomization():
 	for sbFileName in SB_CUSTOMIZATOR:
 		print ''
