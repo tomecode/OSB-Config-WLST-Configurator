@@ -16,11 +16,11 @@
 				<include>*.jar</include>
 			</includes>
 			<directory>target/</directory>
-			<outputDirectory>osb-wlst-customization</outputDirectory>
+			<outputDirectory>OSB-Config-WLST-Configurator</outputDirectory>
 		</fileSet>
 		<fileSet>
 			<directory>src/main/resources/</directory>
-			<outputDirectory>osb-wlst-customization</outputDirectory>
+			<outputDirectory>OSB-Config-WLST-Configurator</outputDirectory>
 		</fileSet>
 	</fileSets>
 </assembly>

@@ -1,10 +1,10 @@
 ####################################################################
-#
+10#
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
-#	Version:                        2.0.0
+#	Version:                        1.0.0
 #	Description:					
-#	Copyright (c):					Tomas (Tome) Frastia
+#	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
 #	1.0.0
@@ -239,7 +239,7 @@ def connectToOSB():
 		return True
 	except WLSTException:
 		print ' --- No server is running at '+ uri+ ' !\n Deploy cancelled!'
-		return False
+	return False
 
 
 #===================================================================
@@ -275,24 +275,21 @@ def deployToOsb(file):
 		print '	Deploying to OSB: '+ file
 		
 		try:
-			connectToOSB()
-
-			#create new session
-			sessionMBean, sessionName = createOSBSession()
-			
-			ALSBConfigurationMBean = findService(String("ALSBConfiguration.").concat(sessionName), "com.bea.wli.sb.management.configuration.ALSBConfigurationMBean")
-
-			#simple import without customization
-			uploadSbCofnigToOSB(ALSBConfigurationMBean,file)
-
+			if connectToOSB()== True:
+				#create new session
+				sessionMBean, sessionName = createOSBSession()
 				
-			print '		..Commiting session, please wait, this can take a while...'
-			sessionMBean.activateSession(sessionName, "Import from wlst") 
-			print '		..Session was successfully committed!'
-			print '	'
+				ALSBConfigurationMBean = findService(String("ALSBConfiguration.").concat(sessionName), "com.bea.wli.sb.management.configuration.ALSBConfigurationMBean")
+
+				#simple import without customization
+				uploadSbCofnigToOSB(ALSBConfigurationMBean,file)
+
+				print '		..Commiting session, please wait, this can take a while...'
+				sessionMBean.activateSession(sessionName, "Import from wlst") 
+				print '		..Session was successfully committed!'
+				print '	'
 		except java.lang.Exception, e:
 			print '	Import to OSB: Failed, please see logs...' + '\n	' 
-			
 			dumpStack()	
 			if sessionMBean != None:
 				sessionMBean.discardSession(sessionName)
@@ -569,7 +566,7 @@ def smtp_smtpserver_password(entry, val):
 #===================================================================
 #	Customize:	Proxy Server
 #===================================================================
-	
+
 def proxyserver_proxyserver_description(entry, val):
 	entry.getProxyServer().setDescription(val)
 
@@ -957,7 +954,7 @@ def lookupCustomizationFunction(functionName, parent, entry):
 	for setFunction in reverseDict(parent):
 		impleSetFunction= (functionName + '_' + setFunction).lower()
 		
-		print 'CustFunct: ' + impleSetFunction
+		#print 'CustFunct: ' + impleSetFunction
 		print LOG_CUST_FUNCTION + setFunction
 		
 		#if the customization function return True than exists another customization function
@@ -965,7 +962,6 @@ def lookupCustomizationFunction(functionName, parent, entry):
 			if (globals()[impleSetFunction](entry, parent[setFunction])):
 				if isDict(parent[setFunction]):
 					lookupCustomizationFunction(impleSetFunction, parent[setFunction],entry)
-					#globals()[impleSetFunction.lower()](entry, parent[setFunction])
 		else:
 			NOT_FOUND_CUSTOMIZATION.append(impleSetFunction)
 
@@ -1002,7 +998,7 @@ def customizeSbConfigFile(customizationFile,path):
 	if len(NOT_FOUND_CUSTOMIZATION)!=0:
 		print ' '
 		print '------------------------------------'
-		print 'Not found following customization functions:'
+		print 'Not found customization functions:'
 		for notFoundFunct in NOT_FOUND_CUSTOMIZATION:
 			print '	'+ notFoundFunct
 		print '------------------------------------'
@@ -1057,7 +1053,6 @@ try:
 
 	
 	deployFile=executeCustomization()
-	#if deployFile!=None:
 	deployToOsb(deployFile)
 
 except Exception, err:

@@ -3,15 +3,21 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.tomecode</groupId>
 	<artifactId>osb-wlst-customization</artifactId>
-	<version>0.0.2-SNAPSHOT</version>
-	<name>osb-wlst-customization</name>
-	<description>osb-wlst-customization</description>
+	<version>1.0.0</version>
+	<name>OSB-Config-WLST-Configurator</name>
+	<description>OSB-Config-WLST-Configurator</description>
 
-
+	<developers>
+		<developer>
+			<name>TomeCode</name>
+			<organization>TomeCode.com</organization>
+			<organizationUrl>http://tomecode.com/</organizationUrl>
+			<url>http://osb-config-wlst-configurator.tomecode.com/</url>
+		</developer>
+	</developers>
 
 	<build>
-		<finalName>osb-wlst-customization-${project.version}</finalName>
-
+		<finalName>OSB-Config-WLST-Configurator-${project.version}</finalName>
 		<resources>
 			<resource>
 				<directory>src/main/resources</directory>
@@ -21,9 +27,7 @@
 				<filtering>false</filtering>
 			</resource>
 		</resources>
-
 		<plugins>
-
 			<plugin>
 				<!-- create zip -->
 				<groupId>org.apache.maven.plugins</groupId>
@@ -43,7 +47,6 @@
 					</execution>
 				</executions>
 			</plugin>
-
 		</plugins>
 	</build>
 

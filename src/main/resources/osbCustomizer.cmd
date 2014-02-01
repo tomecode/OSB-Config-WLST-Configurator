@@ -14,7 +14,7 @@ SET CLASSPATH=%CLASSPATH%;%OSB_HOME%\lib\sb-kernel-resources.jar
 SET CLASSPATH=%CLASSPATH%;%OSB_HOME%\lib\sb-kernel-wls.jar
 SET CLASSPATH=%CLASSPATH%;%OSB_HOME%\lib\sb-transports-http-wls.jar
 SET CLASSPATH=%CLASSPATH%;%OSB_HOME%\lib\sb-transports-main.jar
-SET CLASSPATH=%CLASSPATH%;%~p0\osb-wlst-customization-0.0.2-SNAPSHOT.jar
+SET CLASSPATH=%CLASSPATH%;%~p0\*
 
 
 SETLOCAL enabledelayedexpansion
