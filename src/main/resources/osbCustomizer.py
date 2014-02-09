@@ -2,11 +2,13 @@
 10#
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
-#	Version:                        1.0.0
+#	Version:                        1.1.0
 #	Description:					
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#	1.1.0
+#		customize: MQConnection
 #	1.0.0
 #		new customization core
 #		customize authentication for : SSLClientAuthenticationType,CustomTokenAuthenticationType for HTTP/Proxy
@@ -44,6 +46,10 @@ from com.bea.wli.sb.resources.config import SmtpServerEntry;
 from com.bea.wli.sb.resources.config import JndiProviderEntry;
 from com.bea.wli.sb.resources.config import ServiceAccountUserPassword;
 from com.bea.wli.sb.resources.config import UserPassword;
+
+from com.bea.wli.sb.resources.config import MqConnectionEntry;
+from com.bea.wli.sb.resources.config import MqTcpModeType;
+
 from com.bea.wli.sb.services import ServiceAccountDocument;
 from com.bea.wli.sb.services import ServiceDefinition;
 from com.bea.wli.sb.services import StaticServiceAccount;
@@ -80,7 +86,9 @@ from com.bea.wli.sb.services import ServiceProviderEntry
 from com.bea.wli.sb.services.security.config import XPathSelectorType
 
 from com.bea.wli.sb.util import Refs
+
 from com.bea.wli.config.customization import Customization
+
 from com.bea.wli.sb.management.importexport import ALSBImportOperation
 from com.bea.wli.sb.management.configuration import SessionManagementMBean
 from com.bea.wli.sb.management.configuration import ServiceConfigurationMBean
@@ -91,6 +99,7 @@ from com.bea.wli.sb.management.query import ProxyServiceQuery
 #===================================================================
 LOG_CUST_FILE = ' --> '
 LOG_CUST_FUNCTION = '   --> '
+LOG_NOT_FOUND_FUNCTION = '   ##> Error Not found: '
 #===================================================================
 
 NOT_FOUND_CUSTOMIZATION=[]
@@ -289,7 +298,7 @@ def deployToOsb(file):
 				print '		..Session was successfully committed!'
 				print '	'
 		except java.lang.Exception, e:
-			print '	Import to OSB: Failed, please see logs...' + '\n	' 
+			print '	Import to OSB: Failed, please see logs...' + '\n	', e
 			dumpStack()	
 			if sessionMBean != None:
 				sessionMBean.discardSession(sessionName)
@@ -914,6 +923,57 @@ def serviceprovider_serviceprovider_by_prupose(entry, val, prupose, attr):
 			keyPair.setAlias(val)
 		else:
 			print LOG_CUST_FILE+ 'Warning: '+val+' property is not supported'
+	
+#===================================================================
+#	Customize:	MQConnection
+#===================================================================
+
+def mqconnection_mqconnection_xaenabled(entry, val):
+	entry.setMqXaEnabled(val)
+	
+def mqconnection_mqconnection_mqconnectionmaxwait(entry, val):
+	entry.setMqConnMaxWait(val)
+	
+def mqconnection_mqconnection_mqconnectionpoolsize(entry, val):
+	entry.setMqConnPoolSize(val)
+
+def mqconnection_mqconnection_mqconnectiontimeout(entry, val):
+	entry.setMqConnTimeout(val)
+	
+def mqconnection_mqconnection_mqversion(entry, val):
+	entry.setMqVersion(val)
+
+#===================================================================
+#	Customize:	MQConnection 	-	 Connection Type:BindingsMode
+#===================================================================
+
+def mqconnection_mqconnection_bindingmode(entry, val):
+	return True
+
+def mqconnection_mqconnection_bindingmode_mqqueuemanagername(entry, val):
+	entry.getBindingsMode().setQueueManagerName(val)
+	
+def mqconnection_mqconnection_tcpmode(entry, val):
+	return True
+
+#===================================================================
+#	Customize:	MQConnection 	-	 Connection Type:TcpMode
+#===================================================================
+
+def mqconnection_mqconnection_tcpmode_mqqueuemanagername(entry, val):
+	entry.getTcpMode().setQueueManagerName(val)
+	
+def mqconnection_mqconnection_tcpmode_mqqueuemanagerchannelname(entry, val):
+	entry.getTcpMode().setQueueManagerChannelName(val)
+
+def mqconnection_mqconnection_tcpmode_mqportnumber(entry, val):
+	entry.getTcpMode().setPort(val)
+
+def mqconnection_mqconnection_tcpmode_mqhostname(entry, val):
+	entry.getTcpMode().setHost(val)
+
+def mqconnection_mqconnection_tcpmode_queuemanagerccsid(entry, val):
+	entry.getTcpMode().setQueueManagerCcsid(val)
 
 ####	###############################################################################################################################################
 ####	###############################################################################################################################################
@@ -945,6 +1005,8 @@ def loadEntryFactory(jarEntry):
 		return AlertDestination.Factory.parse(ByteArrayInputStream(jarEntry.getData()))	
 	elif jarEntry.getExtension()=='ServiceProvider'.lower():
 		return ServiceProviderEntry.Factory.parse(ByteArrayInputStream(jarEntry.getData()))	
+	elif jarEntry.getExtension()=='MQConnection'.lower():
+		return MqConnectionEntry.Factory.parse(ByteArrayInputStream(jarEntry.getData()))	
 	else:
 		return None
 
@@ -963,6 +1025,7 @@ def lookupCustomizationFunction(functionName, parent, entry):
 				if isDict(parent[setFunction]):
 					lookupCustomizationFunction(impleSetFunction, parent[setFunction],entry)
 		else:
+			print LOG_NOT_FOUND_FUNCTION + impleSetFunction
 			NOT_FOUND_CUSTOMIZATION.append(impleSetFunction)
 
 
