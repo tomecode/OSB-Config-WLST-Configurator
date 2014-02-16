@@ -17,7 +17,7 @@ export CLASSPATH=${OSB_HOME}/lib/sb-transports-http-wls.jar:$CLASSPATH
 export CLASSPATH=${OSB_HOME}/lib/modules/*:$CLASSPATH
 export CLASSPATH=${OSB_HOME}/modules/*:$CLASSPATH
 export CLASSPATH=${OSB_HOME}/modules/features/*:$CLASSPATH
-export CLASSPATH=${OSB_HOME}/lib/transports/mqc*.jar:$CLASSPATH
+export CLASSPATH=${OSB_HOME}/lib/transports/mq*.jar:$CLASSPATH
 export CLASSPATH=./*.jar:$CLASSPATH
 
 echo $CLASSPATH

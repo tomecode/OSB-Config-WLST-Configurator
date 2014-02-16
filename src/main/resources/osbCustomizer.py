@@ -9,6 +9,7 @@
 #	Changelog:
 #	1.1.0
 #		customize: MQConnection
+#		customize Business Service with MQ transport
 #	1.0.0
 #		new customization core
 #		customize authentication for : SSLClientAuthenticationType,CustomTokenAuthenticationType for HTTP/Proxy
@@ -64,6 +65,9 @@ from com.bea.wli.sb.transports.http import HttpEndPointConfiguration;
 from com.bea.wli.sb.transports.http import HttpInboundPropertiesType;
 from com.bea.wli.sb.transports.http import HttpOutboundPropertiesType;
 from com.bea.wli.sb.transports.http import HttpRequestMethodEnum;
+
+from com.bea.wli.sb.transports.mq import MQEndPointConfiguration;
+from com.bea.wli.sb.transports.mq import MQMessageTypeEnum;
 
 from com.bea.wli.sb.transports.jms import JmsEndPointConfiguration;
 from com.bea.wli.sb.transports.jms import JmsResponsePatternEnum
@@ -362,6 +366,7 @@ def getHttpOutboundProperties(serviceDefinition):
 	if outboundProperties == None:
 		outboundProperties= httpEndPointConfiguration.addNewOutboundProperties();
 	return outboundProperties
+
 def getHttpEndPointConfiguration(serviceDefinition):
 	HttpEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
 	return HttpEndPointConfiguration
@@ -376,6 +381,13 @@ def findKeyPairForServiceProvider(serviceProviderEntry, prupose):
 	
 	return None
 
+
+def getMqOutboundProperties(serviceDefinition):
+	MQEndPointConfiguration = serviceDefinition.getEndpointConfig().getProviderSpecific()
+	outboundProperties= MQEndPointConfiguration.getOutboundProperties()
+	if outboundProperties == None:
+		outboundProperties= httpEndPointConfiguration.addNewOutboundProperties();
+	return outboundProperties
 
 #===================================================================
 # Create a policy expression
@@ -974,6 +986,44 @@ def mqconnection_mqconnection_tcpmode_mqhostname(entry, val):
 
 def mqconnection_mqconnection_tcpmode_queuemanagerccsid(entry, val):
 	entry.getTcpMode().setQueueManagerCcsid(val)
+
+#===================================================================	
+#	Customize:	BusinessService: Transport Type: MQ
+#===================================================================
+
+def mq_businessservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def mq_businessservice_retrycount(entry, val):
+	getCommonOutboundProperties(entry).setRetryCount(val)
+	
+def mq_businessservice_retryinterval(entry, val):
+	getCommonOutboundProperties(entry).setRetryInterval(val)
+
+def mq_businessservice_messagetype(entry, val):
+	if 'Bytes' ==val:
+		getMqOutboundProperties(entry).setMessageType(MQMessageTypeEnum.BYTES)
+	elif 'Text' ==val:
+		getMqOutboundProperties(entry).setMessageType(MQMessageTypeEnum.TEXT)
+	else:
+		print LOG_CUST_FILE+ 'Warning: '+val+' property is not supported for message type'
+			
+def mq_businessservice_responsetimeout(entry, val):
+	getMqOutboundProperties(entry).setResponseTimeout(val)
+
+def mq_businessservice_autogeneratecorrelationvalue(entry,val):
+	getMqOutboundProperties(entry).setAutoGenCorrelationValue(val)
+
+def mq_businessservice_mqresponseuri(entry,val):
+	getMqOutboundProperties(entry).setResponseURI(val)
+
+def mq_businessservice_pollinginterval(entry, val):
+	getMqOutboundProperties(entry).setPollingInterval(val)
+
+def mq_businessservice_processrfh2headers(entry, val):
+	getMqOutboundProperties(entry).setProcessRfh2(val)
+
+
 
 ####	###############################################################################################################################################
 ####	###############################################################################################################################################
