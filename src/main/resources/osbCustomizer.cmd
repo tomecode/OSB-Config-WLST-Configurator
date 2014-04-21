@@ -1,6 +1,5 @@
 @ECHO OFF
 
-
 SET OSB_HOME=D:\Oracle\Middleware11gPS6\Oracle_OSB1ps6
 SET WL_HOME=D:\Oracle\Middleware11gPS6\wlserver_10.3
 @REM CALL "%WL_HOME%\server\bin\setWLSEnv.cmd"
@@ -22,6 +21,12 @@ SETLOCAL enabledelayedexpansion
 for %%i in (%OSB_HOME%\lib\modules\*.jar) do call :AddToPath %%i
 for %%i in (%OSB_HOME%\modules\*.jar) do call :AddToPath %%i
 for %%i in (%OSB_HOME%\lib\transports\mq*.jar) do call :AddToPath %%i
+for %%i in (%OSB_HOME%\lib\transports\ftp*.jar) do call :AddToPath %%i
+for %%i in (%OSB_HOME%\lib\transports\file*.jar) do call :AddToPath %%i
+for %%i in (%OSB_HOME%\lib\transports\sftp*.jar) do call :AddToPath %%i
+for %%i in (%OSB_HOME%\lib\transports\email*.jar) do call :AddToPath %%i
+for %%i in (%OSB_HOME%\lib\transports\sb*.jar) do call :AddToPath %%i
+
 
 java -Dfile.encoding=UTF-8 -Dweblogic.wlstHome=%temp%\osbCustomizer\ weblogic.WLST -i osbCustomizer.py %*
 

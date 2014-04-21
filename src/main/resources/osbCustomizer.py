@@ -1,5 +1,5 @@
 ####################################################################
-10#
+#
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
 #	Version:                        1.1.0
@@ -8,22 +8,23 @@
 #
 #	Changelog:
 #	1.1.0
-#		customize: MQConnection
-#		customize Business Service with MQ transport
+#		Customize: 	MQConnection
+#					Proxy Service and Business Service with transport: MQ, MQConnection, FTP, FILE, SFTP, EMAIL, SB
+#		Bug fixes and improvements
 #	1.0.0
-#		new customization core
-#		customize authentication for : SSLClientAuthenticationType,CustomTokenAuthenticationType for HTTP/Proxy
-#		customize: 	ProxyServer, AlertDestination,ServiceProvider
-#		customize: RetryCount and RetryInterval in HTTP/Proxy
-#		enable or disable deployment to OSB
-#		bug fixes
-#
+#		New customization core
+#		Customize: 	authentication for: SSLClientAuthenticationType, CustomTokenAuthenticationType for HTTP/Proxy
+#					ProxyServer, AlertDestination, ServiceProvider
+#					(Static) ServiceAccount
+#					RetryCount and RetryInterval in HTTP/Proxy
+#		Enable or disable deployment to OSB
+#		Bug fixes
 #	0.0.2
-#		bug fixes
+#		Bug fixes
 #	0.0.2
-#		bug fixes
+#		Bug fixes
 #	0.0.1
-#		first version
+#		Customize: Proxy Service and Business Service with transport: JMS and HTTP
 ####################################################################
 
 
@@ -32,66 +33,77 @@ import os
 import os.path
 import time
 
-from java.io import ByteArrayInputStream;
-from java.io import ByteArrayOutputStream;
-from java.io import FileOutputStream;
+from javax.xml.namespace import QName
+
+from java.io import ByteArrayInputStream
+from java.io import ByteArrayOutputStream
+from java.io import FileOutputStream
 from java.util.jar import JarInputStream
 from java.util.jar import JarOutputStream
-from java.util.jar import JarEntry;
+from java.util.jar import JarEntry
 
 from com.tomecode.utils import Utils
 
-from com.bea.wli.domain.config import OperationalSettings;
-from com.bea.wli.sb.resources.config import SmtpServerEntry;
+from com.bea.wli.sb.services import ServiceAccountDocument
+from com.bea.wli.sb.services import ServiceDefinition
+from com.bea.wli.sb.services import StaticServiceAccount
+from com.bea.wli.sb.services import ServiceProviderEntry
 
-from com.bea.wli.sb.resources.config import JndiProviderEntry;
-from com.bea.wli.sb.resources.config import ServiceAccountUserPassword;
-from com.bea.wli.sb.resources.config import UserPassword;
+from com.bea.wli.sb.transports import EndPointConfiguration
+from com.bea.wli.sb.transports import URIType
+from com.bea.wli.sb.transports import FilePathType
 
-from com.bea.wli.sb.resources.config import MqConnectionEntry;
-from com.bea.wli.sb.resources.config import MqTcpModeType;
-
-from com.bea.wli.sb.services import ServiceAccountDocument;
-from com.bea.wli.sb.services import ServiceDefinition;
-from com.bea.wli.sb.services import StaticServiceAccount;
-from com.bea.wli.sb.transports import EndPointConfiguration;
-from com.bea.wli.sb.transports import URIType;
-
-from com.bea.wli.sb.transports.http import AuthenticationConfigurationType;
+from com.bea.wli.sb.transports.http import AuthenticationConfigurationType
 from com.bea.wli.sb.transports.http import SSLClientAuthenticationType
-from com.bea.wli.sb.transports.http import CustomTokenAuthenticationType;
-from com.bea.wli.sb.transports.http import HttpBasicAuthenticationType;
-from com.bea.wli.sb.transports.http import HttpEndPointConfiguration;
-from com.bea.wli.sb.transports.http import HttpInboundPropertiesType;
-from com.bea.wli.sb.transports.http import HttpOutboundPropertiesType;
-from com.bea.wli.sb.transports.http import HttpRequestMethodEnum;
+from com.bea.wli.sb.transports.http import CustomTokenAuthenticationType
+from com.bea.wli.sb.transports.http import HttpBasicAuthenticationType
+from com.bea.wli.sb.transports.http import HttpEndPointConfiguration
+from com.bea.wli.sb.transports.http import HttpInboundPropertiesType
+from com.bea.wli.sb.transports.http import HttpOutboundPropertiesType
+from com.bea.wli.sb.transports.http import HttpRequestMethodEnum
 
-from com.bea.wli.sb.transports.mq import MQEndPointConfiguration;
-from com.bea.wli.sb.transports.mq import MQMessageTypeEnum;
+from com.bea.wli.sb.transports.mq import MQInboundProperties
+from com.bea.wli.sb.transports.mq import MQEndPointConfiguration
+from com.bea.wli.sb.transports.mq import MQMessageTypeEnum
 
-from com.bea.wli.sb.transports.jms import JmsEndPointConfiguration;
+from com.bea.wli.sb.transports.ftp import FtpEndPointConfiguration
+from com.bea.wli.sb.transports.ftp import FtpInboundPropertiesType
+from com.bea.wli.sb.transports.ftp import FilePollInfo
+
+from com.bea.wli.sb.transports.file import FileEndPointConfiguration
+from com.bea.wli.sb.transports.file import FileInBoundProperties
+
+from com.bea.wli.sb.transports.sftp import SftpEndPointConfiguration
+
+from com.bea.wli.sb.transports.email import EmailEndPointConfiguration
+
+from com.bea.wli.sb.transports.sb import SBEndPointConfiguration
+
+from com.bea.wli.sb.transports.jms import JmsEndPointConfiguration
 from com.bea.wli.sb.transports.jms import JmsResponsePatternEnum
 from com.bea.wli.sb.transports.jms import JmsMessageTypeEnum
 
-from com.bea.wli.sb.uddi import UDDIRegistryEntry;
+from com.bea.wli.sb.uddi import UDDIRegistryEntry
 
-from com.bea.wli.sb.security.accesscontrol.config import PolicyContainerType;
-from com.bea.wli.sb.security.accesscontrol.config import ProviderPolicyContainerType;
+from com.bea.wli.sb.security.accesscontrol.config import PolicyContainerType
+from com.bea.wli.sb.security.accesscontrol.config import ProviderPolicyContainerType
 
 from com.bea.wli.sb.services.security.config import XPathSelectorType
 
-from com.bea.wli.sb.resources.proxyserver.config import ProxyServerDocument;
-from com.bea.wli.sb.resources.proxyserver.config import ProxyServerParams;
+from com.bea.wli.sb.resources.proxyserver.config import ProxyServerDocument
+from com.bea.wli.sb.resources.proxyserver.config import ProxyServerParams
 
-from com.bea.wli.monitoring.alert import AlertDestination
-
-from com.bea.wli.sb.services import ServiceProviderEntry
 
 from com.bea.wli.sb.services.security.config import XPathSelectorType
 
 from com.bea.wli.sb.util import Refs
 
-from com.bea.wli.config.customization import Customization
+from com.bea.wli.sb.resources.config import SmtpServerEntry
+from com.bea.wli.sb.resources.config import JndiProviderEntry
+from com.bea.wli.sb.resources.config import ServiceAccountUserPassword
+from com.bea.wli.sb.resources.config import UserPassword
+from com.bea.wli.sb.resources.config import MqConnectionEntry
+from com.bea.wli.sb.resources.config import MqTcpModeType
 
 from com.bea.wli.sb.management.importexport import ALSBImportOperation
 from com.bea.wli.sb.management.configuration import SessionManagementMBean
@@ -99,6 +111,11 @@ from com.bea.wli.sb.management.configuration import ServiceConfigurationMBean
 from com.bea.wli.sb.management.configuration import ALSBConfigurationMBean
 from com.bea.wli.sb.management.query import ProxyServiceQuery
 
+from com.bea.wli.domain.config import OperationalSettings
+
+from com.bea.wli.config.customization import Customization
+
+from com.bea.wli.monitoring.alert import AlertDestination
 
 #===================================================================
 LOG_CUST_FILE = ' --> '
@@ -113,7 +130,7 @@ NOT_FOUND_CUSTOMIZATION=[]
 #===================================================================
 class OsbJarEntry:
 	name=''
-	directory=False;
+	directory=False
 	data=None
 	extension=None
 	
@@ -140,7 +157,7 @@ class OsbJarEntry:
 def findOsbJarEntry(indexName,osbJarEntries):
 	for entry in osbJarEntries:
 		if entry.getName()==indexName:
-			return entry;
+			return entry
 		
 	return None
 	
@@ -181,7 +198,7 @@ def reverseDict(val):
 	if val==None:
 		return []
 	list=val.keys()
-	list.reverse();
+	list.reverse()
 	return list
 
 #===================================================================
@@ -196,7 +213,7 @@ def generateNewSBConfig(osbJarEntries):
 			jarEntry = JarEntry(entry.getName())
 			jos.putNextEntry(jarEntry)
 			if entry.getData() != None:
-				jos.write(entry.getData(), 0, len(entry.getData()));
+				jos.write(entry.getData(), 0, len(entry.getData()))
 			jos.closeEntry()
 	except Exception, err:
 		print traceback.format_exc()
@@ -327,14 +344,14 @@ def getCommonOutboundProperties(serviceDefinition):
 	endPointConfiguration=serviceDefinition.getEndpointConfig()
 	outboundProperties= endPointConfiguration.getOutboundProperties()
 	if outboundProperties == None:
-		outboundProperties= endPointConfiguration.addNewOutboundProperties();
+		outboundProperties= endPointConfiguration.addNewOutboundProperties()
 	return outboundProperties
 
 def getJmsInboundProperties(serviceDefinition):
 	jmsEndPointConfiguration=getJmsEndPointConfiguration(serviceDefinition)
 	jmsInboundProperties= jmsEndPointConfiguration.getInboundProperties()
 	if jmsInboundProperties == None:
-		jmsInboundProperties= jmsEndPointConfiguration.addNewInboundProperties();
+		jmsInboundProperties= jmsEndPointConfiguration.addNewInboundProperties()
 	return jmsInboundProperties
 
 
@@ -357,14 +374,14 @@ def getHttpInboundProperties(serviceDefinition):
 	httpEndPointConfiguration = getHttpEndPointConfiguration(serviceDefinition)
 	httpInboundProperties= httpEndPointConfiguration.getInboundProperties()
 	if httpInboundProperties == None:
-		httpInboundProperties= httpEndPointConfiguration.addNewInboundProperties();
+		httpInboundProperties= httpEndPointConfiguration.addNewInboundProperties()
 	return httpInboundProperties
 
 def getHttpOutboundProperties(serviceDefinition):
 	httpEndPointConfiguration = getHttpEndPointConfiguration(serviceDefinition)
 	outboundProperties= httpEndPointConfiguration.getOutboundProperties()
 	if outboundProperties == None:
-		outboundProperties= httpEndPointConfiguration.addNewOutboundProperties();
+		outboundProperties= httpEndPointConfiguration.addNewOutboundProperties()
 	return outboundProperties
 
 def getHttpEndPointConfiguration(serviceDefinition):
@@ -386,7 +403,100 @@ def getMqOutboundProperties(serviceDefinition):
 	MQEndPointConfiguration = serviceDefinition.getEndpointConfig().getProviderSpecific()
 	outboundProperties= MQEndPointConfiguration.getOutboundProperties()
 	if outboundProperties == None:
-		outboundProperties= httpEndPointConfiguration.addNewOutboundProperties();
+		outboundProperties= MQEndPointConfiguration.addNewOutboundProperties()
+	return outboundProperties
+
+
+def getFtpOutboundProperties(serviceDefinition):
+	FtpEndPointConfiguration = serviceDefinition.getEndpointConfig().getProviderSpecific()
+	outboundProperties= FtpEndPointConfiguration.getOutboundProperties()
+	if outboundProperties == None:
+		outboundProperties= FtpEndPointConfiguration.addNewOutboundProperties()
+	return outboundProperties
+
+
+def getFtpPrefixSufix(outboundProperties):
+	if outboundProperties.getDestinationFileName()==None:
+		outboundProperties.addNewDestinationFileName()
+	if outboundProperties.getDestinationFileName().getPrefixSuffix()==None:
+		outboundProperties.getDestinationFileName().addNewPrefixSuffix()
+	return outboundProperties.getDestinationFileName().getPrefixSuffix()
+
+def getFileOutboundProperties(serviceDefinition):
+	FileEndPointConfiguration = serviceDefinition.getEndpointConfig().getProviderSpecific()
+	outboundProperties= FileEndPointConfiguration.getOutboundProperties()
+	if outboundProperties == None:
+		outboundProperties= FileEndPointConfiguration.addNewOutboundProperties()
+	return outboundProperties
+
+
+def getMqInboundProperties(serviceDefinition):
+	MQEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
+	inboundProperties=MQEndPointConfiguration.selectChildren(QName("http://www.bea.com/wli/sb/transports/mq", "inbound-properties"))[0]
+	mqInboundProperties = MQInboundProperties.Factory.parse(inboundProperties.toString())
+	return inboundProperties, mqInboundProperties
+
+def getFtpInboundProperties(serviceDefinition):
+	FtpEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
+	inboundProperties=FtpEndPointConfiguration.selectChildren(QName("http://www.bea.com/wli/sb/transports/ftp", "inbound-properties"))[0]
+	ftpInboundProperties = FtpInboundPropertiesType.Factory.parse(inboundProperties.toString())
+	return inboundProperties, ftpInboundProperties
+
+
+def getFileInboundProperties(serviceDefinition):
+	FileEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
+	inboundProperties=FileEndPointConfiguration.selectChildren(QName("http://www.bea.com/wli/sb/transports/file", "inbound-properties"))[0]
+	fileInBoundProperties = FileInBoundProperties.Factory.parse(inboundProperties.toString())
+	return inboundProperties, fileInBoundProperties
+
+def getSftpInboundProperties(serviceDefinition):
+	SftpEndPointConfiguration = serviceDefinition.getEndpointConfig().getProviderSpecific()
+	inboundProperties= SftpEndPointConfiguration.getInboundProperties()
+	if inboundProperties == None:
+		inboundProperties= SftpEndPointConfiguration.addNewInboundProperties()
+	return inboundProperties
+
+def getSftpOutboundProperties(serviceDefinition):
+	SftpEndPointConfiguration = serviceDefinition.getEndpointConfig().getProviderSpecific()
+	outboundProperties= SftpEndPointConfiguration.getOutboundProperties()
+	if outboundProperties == None:
+		outboundProperties= SftpEndPointConfiguration.addNewOutboundProperties()
+	return outboundProperties
+
+def getEmailEndPointConfiguration(serviceDefinition):
+	EmailEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
+	return EmailEndPointConfiguration
+
+def getEmailInboundProperties(serviceDefinition):
+	EmailEndPointConfiguration = getEmailEndPointConfiguration(serviceDefinition)
+	inboundProperties= EmailEndPointConfiguration.getInboundProperties()
+	if inboundProperties == None:
+		inboundProperties= EmailEndPointConfiguration.addNewInboundProperties()
+	return inboundProperties
+
+def getEmailOutboundProperties(serviceDefinition):
+	EmailEndPointConfiguration = getEmailEndPointConfiguration(serviceDefinition)
+	outboundProperties= EmailEndPointConfiguration.getOutboundProperties()
+	if outboundProperties == None:
+		outboundProperties= EmailEndPointConfiguration.addNewOutboundProperties()
+	return outboundProperties
+
+def getSBEndPointConfiguration(serviceDefinition):
+	SBEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
+	return SBEndPointConfiguration
+
+def getSbInboundProperties(serviceDefinition):
+	SBEndPointConfiguration = getSBEndPointConfiguration(serviceDefinition)
+	inboundProperties= SBEndPointConfiguration.getInboundProperties()
+	if inboundProperties == None:
+		inboundProperties= SBEndPointConfiguration.addNewInboundProperties()
+	return inboundProperties
+
+def getSbOutboundProperties(serviceDefinition):
+	SBEndPointConfiguration = getSBEndPointConfiguration(serviceDefinition)
+	outboundProperties= SBEndPointConfiguration.getOutboundProperties()
+	if outboundProperties == None:
+		outboundProperties= SBEndPointConfiguration.addNewOutboundProperties()
 	return outboundProperties
 
 #===================================================================
@@ -444,7 +554,7 @@ def setupPolicyExpression(serviceDefinition, policyExpression, provider):
 
 			transportLevelPolicy.set(policyContainerType)
 		else:
-			policyContainerType = transportLevelPolicy;
+			policyContainerType = transportLevelPolicy
 			policyContainerType.getPolicyArray()[0].setProviderId(provider)
 			policyContainerType.getPolicyArray()[0].setPolicyExpression(policyExpression)
 
@@ -762,7 +872,7 @@ def http_proxyservice_security_customauthentication_authenticationtype_customtok
 def http_proxyservice_security_customauthentication_authenticationtype_customusernameandpassword(entry, val):
 	security=getSecurityFromServiceDefinition(entry)
 	customTokenAuthentication=prepareCustomTokenAuthentication(security)
-	#customTokenAuthentication.unsetCustomToken();
+	#customTokenAuthentication.unsetCustomToken()
 
 	usernamePassword=customTokenAuthentication.getUsernamePassword()
 	if usernamePassword==None:
@@ -881,23 +991,23 @@ def http_businessservice_connectiontimeout(entry, val):
 #===================================================================
 
 def alertdestination_alertdestination_description(entry, val):
-	entry.setDescription(val);
+	entry.setDescription(val)
 
 def alertdestination_alertdestination_alertlogging(entry, val):
-	entry.setAlertToConsole(val);
+	entry.setAlertToConsole(val)
 
 def alertdestination_alertdestination_reporting(entry, val):
-	entry.setAlertToReportingDataSet(val);
+	entry.setAlertToReportingDataSet(val)
 
 def alertdestination_alertdestination_snmptrap(entry, val):
-	entry.setAlertToSNMP(val);
+	entry.setAlertToSNMP(val)
 	
 #===================================================================	
 #	Cutomize:	Service Provider
 #===================================================================
 
 def serviceprovider_serviceprovider_description(entry, val):
-	entry.setDescription(val);
+	entry.setDescription(val)
 
 def serviceprovider_serviceprovider_ssl(entry, val):
 	return True
@@ -1007,11 +1117,12 @@ def mq_businessservice_messagetype(entry, val):
 		getMqOutboundProperties(entry).setMessageType(MQMessageTypeEnum.TEXT)
 	else:
 		print LOG_CUST_FILE+ 'Warning: '+val+' property is not supported for message type'
+
 			
 def mq_businessservice_responsetimeout(entry, val):
 	getMqOutboundProperties(entry).setResponseTimeout(val)
 
-def mq_businessservice_autogeneratecorrelationvalue(entry,val):
+def mq_businessservice_autogeneratecorrelationvalue(entry, val):
 	getMqOutboundProperties(entry).setAutoGenCorrelationValue(val)
 
 def mq_businessservice_mqresponseuri(entry,val):
@@ -1024,6 +1135,350 @@ def mq_businessservice_processrfh2headers(entry, val):
 	getMqOutboundProperties(entry).setProcessRfh2(val)
 
 
+#===================================================================	
+#	Customize:	ProxyService: Transport Type: MQ
+#===================================================================
+
+def mq_proxyservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def mq_proxyservice_mqresponseuri(entry, val):
+	inboundProperties, mqInboundProperties=getMqInboundProperties(entry)
+	mqInboundProperties.setResponseURI(val)	
+	inboundProperties.set(mqInboundProperties)
+
+def mq_proxyservice_responsemessagetype(entry, val):
+	inboundProperties, mqInboundProperties=getMqInboundProperties(entry)
+	if 'Bytes' ==val:
+		mqInboundProperties.setResponseMessageType(MQMessageTypeEnum.BYTES)
+	elif 'Text' ==val:
+		mqInboundProperties.setResponseMessageType(MQMessageTypeEnum.TEXT)
+	print LOG_CUST_FILE+ 'Warning: '+val+' property is not supported for message type'
+	inboundProperties.set(mqInboundProperties)
+
+def mq_proxyservice_retrycount(entry, val):
+	inboundProperties, mqInboundProperties=getMqInboundProperties(entry)
+	mqInboundProperties.setRetryCount(val)	
+	inboundProperties.set(mqInboundProperties)
+
+def mq_proxyservice_pollinginterval(entry, val):
+	inboundProperties, mqInboundProperties=getMqInboundProperties(entry)
+	mqInboundProperties.setPollingInterval(val)	
+	inboundProperties.set(mqInboundProperties)
+
+#===================================================================	
+#	Customize:	ProxyService: Transport Type: FTP
+#===================================================================
+
+def ftp_proxyservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def ftp_proxyservice_readlimit(entry, val):
+	inboundProperties, ftpInboundProperties=getFtpInboundProperties(entry)
+	ftpInboundProperties.setReadLimit(val)
+	inboundProperties.set(ftpInboundProperties)
+
+def ftp_proxyservice_directstreaming(entry, val):
+	inboundProperties, ftpInboundProperties=getFtpInboundProperties(entry)
+	ftpInboundProperties.setDirectStreaming(val)
+	inboundProperties.set(ftpInboundProperties)
+
+def ftp_proxyservice_timeout(entry,val):
+	inboundProperties, ftpInboundProperties=getFtpInboundProperties(entry)
+	ftpInboundProperties.setTimeout(val)
+	inboundProperties.set(ftpInboundProperties)
+
+def getFtpInboundProperties(serviceDefinition):
+	FtpEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
+	inboundProperties=FtpEndPointConfiguration.selectChildren(QName("http://www.bea.com/wli/sb/transports/ftp", "inbound-properties"))[0]
+	ftpInboundProperties = FtpInboundPropertiesType.Factory.parse(inboundProperties.toString())
+	return inboundProperties, ftpInboundProperties
+
+def ftp_proxyservice_recursivescan(entry, val):
+	inboundProperties, ftpInboundProperties=getFtpInboundProperties(entry)
+	ftpInboundProperties.setRecursiveScan(val)
+	inboundProperties.set(ftpInboundProperties)
+
+def ftp_proxyservice_downloaddirectory(entry, val):
+	inboundProperties, ftpInboundProperties=getFtpInboundProperties(entry)
+	filePath=FilePathType.Factory.newInstance()
+	filePath.setValue(val)
+	ftpInboundProperties.setDownloadDirectory(filePath)
+	inboundProperties.set(ftpInboundProperties)
+
+def ftp_proxyservice_pollinginterval(entry, val):
+	inboundProperties, ftpInboundProperties=getFtpInboundProperties(entry)
+	pollInfo=FilePollInfo.Factory.newInstance()
+	pollInfo.setIntervalMilliseconds(val)
+	ftpInboundProperties.setPollInfo(pollInfo)
+	inboundProperties.set(ftpInboundProperties)
+
+def ftp_proxyservice_passbyreference(entry, val):
+	inboundProperties, ftpInboundProperties=getFtpInboundProperties(entry)
+	ftpInboundProperties.setDirectStreaming(val)
+	inboundProperties.set(ftpInboundProperties)
+
+def ftp_proxyservice_filemask(entry, val):
+	inboundProperties, ftpInboundProperties=getFtpInboundProperties(entry)
+	ftpInboundProperties.setFileMask(val)
+	inboundProperties.set(ftpInboundProperties)
+
+#===================================================================	
+#	Customize:	BusinessService: Transport Type: FTP
+#===================================================================
+
+def ftp_businessservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def ftp_businessservice_timeout(entry, val):
+	getFtpOutboundProperties(entry).setTimeout(val)
+
+def ftp_businessservice_prefix(entry, val):
+	getFtpPrefixSufix(getFtpOutboundProperties(entry)).setPrefix(val)
+
+def ftp_businessservice_suffix(entry, val):
+	getFtpPrefixSufix(getFtpOutboundProperties(entry)).setSuffix(val)
+
+def ftp_businessservice_retrycount(entry, val):
+	getCommonOutboundProperties(entry).setRetryCount(val)
+
+def ftp_businessservice_retryinterval(entry, val):
+	getCommonOutboundProperties(entry).setRetryInterval(val)
+
+
+def file_proxyservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def file_proxyservice_sortbyarrival(entry, val):
+	inboundProperties, fileInBoundProperties=getFileInboundProperties(entry)
+	fileInBoundProperties.setSortByArrival(val)
+	inboundProperties.set(fileInBoundProperties)
+
+def file_proxyservice_readlimit(entry, val):
+	inboundProperties, fileInBoundProperties=getFileInboundProperties(entry)
+	fileInBoundProperties.setReadLimit(val)
+	inboundProperties.set(fileInBoundProperties)
+
+def file_proxyservice_stagedir(entry, val):
+	inboundProperties, fileInBoundProperties=getFileInboundProperties(entry)
+	if fileInBoundProperties.getStageDir()==None:
+		fileInBoundProperties.addNewStageDir()
+	fileInBoundProperties.getStageDir().setValue(val)
+	inboundProperties.set(fileInBoundProperties)
+
+def file_proxyservice_scansubdirectories(entry, val):
+	inboundProperties, fileInBoundProperties=getFileInboundProperties(entry)
+	fileInBoundProperties.setScanSubDirectories(val)
+	inboundProperties.set(fileInBoundProperties)
+
+def file_proxyservice_archivedir(entry, val):
+	inboundProperties, fileInBoundProperties=getFileInboundProperties(entry)
+	if fileInBoundProperties.getArchiveDir()==None:
+		fileInBoundProperties.addNewArchiveDir()
+	fileInBoundProperties.getArchiveDir().setValue(val)
+	inboundProperties.set(fileInBoundProperties)
+
+def file_proxyservice_errordir(entry, val):
+	inboundProperties, fileInBoundProperties=getFileInboundProperties(entry)
+	if fileInBoundProperties.getErrorDir()==None:
+		fileInBoundProperties.addNewErrorDir()
+	fileInBoundProperties.getErrorDir().setValue(val)
+	inboundProperties.set(fileInBoundProperties)
+
+def file_proxyservice_pollinginterval(entry, val):
+	inboundProperties, fileInBoundProperties=getFileInboundProperties(entry)
+	fileInBoundProperties.setPollingInterval(val)
+	inboundProperties.set(fileInBoundProperties)
+
+def file_proxyservice_filemask(entry, val):
+	inboundProperties, fileInBoundProperties=getFileInboundProperties(entry)
+	fileInBoundProperties.setFileMask(val)
+	inboundProperties.set(fileInBoundProperties)
+
+#===================================================================	
+#	Customize:	BusinessService: Transport Type: FTP
+#===================================================================
+
+def file_businessservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def file_businessservice_suffix(entry, val):
+	getFileOutboundProperties(entry).setSuffix(val)
+
+def file_businessservice_prefix(entry, val):
+	getFileOutboundProperties(entry).setPrefix(val)
+
+def file_businessservice_retrycount(entry, val):
+	getCommonOutboundProperties(entry).setRetryCount(val)
+
+def file_businessservice_retryinterval(entry, val):
+	getCommonOutboundProperties(entry).setRetryInterval(val)
+
+#===================================================================	
+#	Customize:	ProxyService: Transport Type: SFTP
+#===================================================================
+
+def sftp_proxyservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def sftp_proxyservice_retrycount(entry, val):
+	getSftpInboundProperties(entry).setRetryCount(val)	
+def sftp_proxyservice_sortbyarrival(entry, val):
+	getSftpInboundProperties(entry).setSortByArrival(val)
+
+def sftp_proxyservice_readlimit(entry, val):
+	getSftpInboundProperties(entry).setReadLimit(val)
+
+def sftp_proxyservice_directstreaming(entry, val):
+	getSftpInboundProperties(entry).setDirectStreaming(val)
+
+def sftp_proxyservice_archivedir(entry, val):
+	if getSftpInboundProperties(entry).getArchiveDirectory()==None:
+		getSftpInboundProperties(entry).addNewArchiveDirectory()
+	getSftpInboundProperties(entry).getArchiveDirectory().setValue(val)
+
+def sftp_proxyservice_timeout(entry, val):
+	getSftpInboundProperties(entry).setTimeout(val)
+
+def sftp_proxyservice_errordir(entry, val):
+	if getSftpInboundProperties(entry).getErrorDirectory()==None:
+		getSftpInboundProperties(entry).addNewErrorDirectory()
+	getSftpInboundProperties(entry).getErrorDirectory().setValue(val)
+
+def sftp_proxyservice_recursivescan(entry, val):
+	getSftpInboundProperties(entry).setRecursiveScan(val)
+
+def sftp_proxyservice_pollinginterval(entry, val):
+	if getSftpInboundProperties(entry).getPollInfo()==None:
+		getSftpInboundProperties(entry).addNewPollInfo()
+	getSftpInboundProperties(entry).getPollInfo().setIntervalMilliseconds(val)
+
+def sftp_proxyservice_filemask(entry , val):
+	getSftpInboundProperties(entry).setFileMask(val)
+
+def sftp_proxyservice_downloaddir(entry , val):
+	if getSftpInboundProperties(entry).getDownloadDirectory()==None:
+		getSftpInboundProperties(entry).addNewDownloadDirectory()
+	getSftpInboundProperties(entry).getDownloadDirectory().setValue(val)
+
+#===================================================================	
+#	Customize:	BusinessService: Transport Type: SFTP
+#===================================================================
+
+def sftp_businessservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def sftp_businessservice_prefix(entry, val):
+	getFtpPrefixSufix(getSftpOutboundProperties(entry)).setPrefix(val)
+
+def sftp_businessservice_suffix(entry, val):
+	getFtpPrefixSufix(getSftpOutboundProperties(entry)).setSuffix(val)
+
+def sftp_businessservice_retrycount(entry, val):
+	getCommonOutboundProperties(entry).setRetryCount(val)
+
+def sftp_businessservice_retryinterval(entry, val):
+	getCommonOutboundProperties(entry).setRetryInterval(val)
+
+#===================================================================	
+#	Customize:	ProxyService: Transport Type: EMAIL
+#===================================================================
+
+def email_proxyservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def email_proxyservice_ssluse(entry, val):
+	getEmailEndPointConfiguration(entry).setUseSsl(val)
+
+def email_proxyservice_readlimit(entry, val):
+	getEmailInboundProperties(entry).setReadLimit(val)
+
+def email_proxyservice_passbyreference(entry, val):
+	getEmailInboundProperties(entry).setPassByReference(val)
+
+def email_proxyservice_pollinginterval(entry, val):
+	getEmailInboundProperties(entry).setPollingInterval(val)
+
+def email_proxyservice_imapmovefolder(entry, val):
+	getEmailInboundProperties(entry).setImapMoveFolder(val)
+
+def email_proxyservice_archivedir(entry, val):
+	if getEmailInboundProperties(entry).getArchiveDirectory()==None:
+		getEmailInboundProperties(entry).addNewArchiveDirectory()
+	getEmailInboundProperties(entry).getArchiveDirectory().setValue(val)
+
+def email_proxyservice_errordir(entry, val):
+	if getEmailInboundProperties(entry).getErrorDirectory()==None:
+		getEmailInboundProperties(entry).addNewErrorDirectory()
+	getEmailInboundProperties(entry).getErrorDirectory().setValue(val)
+
+def email_proxyservice_downloaddir(entry, val):
+	if getEmailInboundProperties(entry).getDownloadDirectory()==None:
+		getEmailInboundProperties(entry).addNewDownloadDirectory()
+	getEmailInboundProperties(entry).getDownloadDirectory().setValue(val)
+
+#===================================================================	
+#	Customize:	BusinessService: Transport Type: EMAIL
+#===================================================================
+
+def email_businessservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def email_businessservice_ssluse(entry, val):
+	getEmailEndPointConfiguration(entry).setUseSsl(val)
+
+def email_businessservice_retrycount(entry, val):
+	getCommonOutboundProperties(entry).setRetryCount(val)
+
+def email_businessservice_retryinterval(entry, val):
+	getCommonOutboundProperties(entry).setRetryInterval(val)
+
+def email_businessservice_connectiontimeout(entry, val):
+	getEmailOutboundProperties(entry).setConnectionTimeout(val)
+
+def email_businessservice_fromaddress(entry, val):
+	getEmailOutboundProperties(entry).setFromAddress(val)
+
+def email_businessservice_fromname(entry, val):
+	getEmailOutboundProperties(entry).setFromName(val)
+
+def email_businessservice_replytoaddress(entry, val):
+	getEmailOutboundProperties(entry).setReplyToAddress(val)
+
+def email_businessservice_replyname(entry, val):
+	getEmailOutboundProperties(entry).setReplyToName(val)
+
+def email_businessservice_sockettimeout(entry, val):
+	getEmailOutboundProperties(entry).setTimeout(val)
+
+
+#===================================================================	
+#	Customize:	ProxyService: Transport Type: SB
+#===================================================================
+
+def sb_proxyservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def sb_proxyservice_ssluse(entry, val):
+	getSbInboundProperties(entry).setUseSsl(val)
+
+#===================================================================	
+#	Customize:	BusinessService: Transport Type: SB
+#===================================================================
+def sb_businessservice_endpointuri(entry, val):
+	changeEndpointUri(convertToTuple(val),entry)
+
+def sb_businessservice_timeout(entry, val):
+	getSbOutboundProperties(entry).setTimeout(val)
+
+def sb_businessservice_retrycount(entry, val):
+	getCommonOutboundProperties(entry).setRetryCount(val)
+
+def sb_businessservice_retryapplicationerrors(entry, val):
+	getCommonOutboundProperties(entry).setRetryApplicationErrors(val)
+
+def sb_businessservice_retryinterval(entry, val):
+	getCommonOutboundProperties(entry).setRetryInterval(val)
 
 ####	###############################################################################################################################################
 ####	###############################################################################################################################################
@@ -1087,7 +1542,7 @@ def customizeSbConfigFile(customizationFile,path):
 	#customize services by transport type...	
 	for customizationType in reverseDict(customizationFile):
 		#print '--> '+ customizationType
-		customizationEntries=customizationFile[customizationType];
+		customizationEntries=customizationFile[customizationType]
 
 		for custEntryFile in reverseDict(customizationEntries):
 			#find sbconfigEntry		
@@ -1100,7 +1555,7 @@ def customizeSbConfigFile(customizationFile,path):
 				sbentry=loadEntryFactory(jarEntry)
 				if sbentry!=None:
 					#
-					execFunctionName = customizationType.lower()+'_'+jarEntry.getExtension().lower()
+					execFunctionName = customizationType.lower().strip()+'_'+jarEntry.getExtension().lower().strip()
 					#execute customization
 					lookupCustomizationFunction(execFunctionName,customizationEntries[custEntryFile],sbentry)
 					#update jar entry
@@ -1157,14 +1612,12 @@ try:
 		print '	'
 		exit()
 
-
 	f=sys.argv[1]
 	
 	print ' Load customization file: '  + f
 	f = os.path.abspath(f)
 	exec open(str(f),'r')
 
-	
 	deployFile=executeCustomization()
 	deployToOsb(deployFile)
 
@@ -1174,5 +1627,5 @@ except Exception, err:
 	#or
 	print sys.exc_info()[0]
 
-	
+
 exit()
