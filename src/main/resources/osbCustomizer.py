@@ -34,6 +34,7 @@ import os
 import os.path
 import time
 import shutil
+import glob
 
 from javax.xml.namespace import QName
 
@@ -1597,16 +1598,26 @@ def executeCustomization():
 			replaceFile = sbFile.get('replaceFile', False)
 			print LOG_CUST_FILE+' replaceFile: ' + str(replaceFile)
 			path=str(sbFileName)
-			path= os.path.abspath(path)
-			if os.path.isfile(path) and os.path.exists(path):
-				osbJarEntries= customizeSbConfigFile(sbFile,sbFileName)
+			if "*" in path:
+				possibleMatches = glob.glob(path)
+				print LOG_CUST_FILE+' '+ str(possibleMatches)
+				if (len(possibleMatches) == 1):
+					path = possibleMatches[0]
+					print LOG_CUST_FILE+' Expanded wildcard to: ' + path
+				else:
+					print LOG_CUST_FILE+' Error: ' + str(len(possibleMatches)) + ' matches found for ' + path + ' SB Config file; expecting 1.'
+					exit()
+			
+			absPath= os.path.abspath(path)
+			if os.path.isfile(absPath) and os.path.exists(absPath):
+				osbJarEntries= customizeSbConfigFile(sbFile,path)
 				
 				#generate new sbconfig file
 				data=generateNewSBConfig(osbJarEntries)
 				#deploy
-				return saveNewSbConfigNoFS(sbFileName,data, replaceFile)
+				return saveNewSbConfigNoFS(path,data, replaceFile)
 			else:
-				print LOG_CUST_FILE+' Error: ' + path + ' SB Config file not found'
+				print LOG_CUST_FILE+' Error: ' + absPath + ' SB Config file not found'
 	else:
 		print LOG_CUST_FILE+' Not found customization config: SB_CUSTOMIZATOR'
 
