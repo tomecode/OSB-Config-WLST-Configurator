@@ -7,6 +7,7 @@
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#	1.1.1	Added toggle to replace the original sbconfig jar rather than create a new one. Disabled by default.
 #	1.1.0
 #		Customize: 	MQConnection
 #					Proxy Service and Business Service with transport: MQ, MQConnection, FTP, FILE, SFTP, EMAIL, SB
@@ -32,6 +33,7 @@ import sys, traceback
 import os
 import os.path
 import time
+import shutil
 
 from javax.xml.namespace import QName
 
@@ -197,6 +199,8 @@ def isDict(val):
 def reverseDict(val):
 	if val==None:
 		return []
+	if not isinstance(val,dict):
+		return []
 	list=val.keys()
 	list.reverse()
 	return list
@@ -239,10 +243,17 @@ def writeToFile(fName, data):
 	fos.close()
 	
 		
-def saveNewSbConfigNoFS(sbFileName,data):		
+def saveNewSbConfigNoFS(sbFileName,data, replaceFile):		
 	index=sbFileName.rfind('.')
-	newSbFileName= sbFileName[0:index] + '-' + time.strftime('%Y%m%d_%H%M%S')+'.jar'
-	print ' New customizated sbconfig is: ' + newSbFileName
+	if (replaceFile):
+		newSbFileName = sbFileName
+		oldSbFileName= sbFileName[0:index] + '-old-' + time.strftime('%Y%m%d_%H%M%S')+'.jar'
+		print ' Moving old sbconfig to: ' + oldSbFileName
+		shutil.copy2(sbFileName, oldSbFileName)
+	else:
+		newSbFileName= sbFileName[0:index] + '-' + time.strftime('%Y%m%d_%H%M%S')+'.jar'
+		print ' New customizated sbconfig is: ' + newSbFileName
+
 	writeToFile(newSbFileName,data)
 	return newSbFileName
 
@@ -1582,7 +1593,9 @@ def executeCustomization():
 			print '------------------------------------'
 			print ' Customize Config: '+str(sbFileName)
 			sbFile=SB_CUSTOMIZATOR[sbFileName]
-			#customize 
+			#customize
+			replaceFile = sbFile.get('replaceFile', False)
+			print LOG_CUST_FILE+' replaceFile: ' + str(replaceFile)
 			path=str(sbFileName)
 			path= os.path.abspath(path)
 			if os.path.isfile(path) and os.path.exists(path):
@@ -1591,7 +1604,7 @@ def executeCustomization():
 				#generate new sbconfig file
 				data=generateNewSBConfig(osbJarEntries)
 				#deploy
-				return saveNewSbConfigNoFS(sbFileName,data)
+				return saveNewSbConfigNoFS(sbFileName,data, replaceFile)
 			else:
 				print LOG_CUST_FILE+' Error: ' + path + ' SB Config file not found'
 	else:
