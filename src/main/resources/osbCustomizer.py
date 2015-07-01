@@ -35,6 +35,8 @@ import os.path
 import time
 import shutil
 import glob
+import fnmatch
+import re
 
 from javax.xml.namespace import QName
 
@@ -163,6 +165,13 @@ def findOsbJarEntry(indexName,osbJarEntries):
 			return entry
 		
 	return None
+	
+def findOsbJarEntries(indexName,osbJarEntries):
+	if "*" in indexName:
+		regex = fnmatch.translate(indexName)
+		return [entry for entry in osbJarEntries if re.match(regex, entry.getName())]
+	else:
+		return [entry for entry in osbJarEntries if entry.getName()==indexName]
 	
 
 #===================================================================
@@ -1558,22 +1567,40 @@ def customizeSbConfigFile(customizationFile,path):
 
 		for custEntryFile in reverseDict(customizationEntries):
 			#find sbconfigEntry		
-			jarEntry=findOsbJarEntry(custEntryFile,osbJarEntries)
-				
-			if jarEntry==None:
+			#jarEntry=findOsbJarEntry(custEntryFile,osbJarEntries)
+			#
+			#if jarEntry==None:
+			#	print LOG_CUST_FILE + 'Not found Entry: ' + custEntryFile
+			#else:
+			#	print LOG_CUST_FILE + jarEntry.getName()
+			#	sbentry=loadEntryFactory(jarEntry)
+			#	if sbentry!=None:
+			#		#
+			#		execFunctionName = customizationType.lower().strip()+'_'+jarEntry.getExtension().lower().strip()
+			#		#execute customization
+			#		lookupCustomizationFunction(execFunctionName,customizationEntries[custEntryFile],sbentry)
+			#		#update jar entry
+			#		jarEntry.setData(sbentry.toString().encode('utf-8'))
+			#	else:
+			#		print LOG_CUST_FUNCTION + 'Customization is not supported!'
+			#
+			jarEntries=findOsbJarEntries(custEntryFile,osbJarEntries)
+			
+			if not jarEntries:
 				print LOG_CUST_FILE + 'Not found Entry: ' + custEntryFile
 			else:
-				print LOG_CUST_FILE + jarEntry.getName()
-				sbentry=loadEntryFactory(jarEntry)
-				if sbentry!=None:
-					#
-					execFunctionName = customizationType.lower().strip()+'_'+jarEntry.getExtension().lower().strip()
-					#execute customization
-					lookupCustomizationFunction(execFunctionName,customizationEntries[custEntryFile],sbentry)
-					#update jar entry
-					jarEntry.setData(sbentry.toString().encode('utf-8'))
-				else:
-					print LOG_CUST_FUNCTION + 'Customization is not supported!'
+				for jarEntry in jarEntries:
+					print LOG_CUST_FILE + jarEntry.getName()
+					sbentry=loadEntryFactory(jarEntry)
+					if sbentry!=None:
+						#
+						execFunctionName = customizationType.lower().strip()+'_'+jarEntry.getExtension().lower().strip()
+						#execute customization
+						lookupCustomizationFunction(execFunctionName,customizationEntries[custEntryFile],sbentry)
+						#update jar entry
+						jarEntry.setData(sbentry.toString().encode('utf-8'))
+					else:
+						print LOG_CUST_FUNCTION + 'Customization is not supported!'
 	
 	if len(NOT_FOUND_CUSTOMIZATION)!=0:
 		print ' '
