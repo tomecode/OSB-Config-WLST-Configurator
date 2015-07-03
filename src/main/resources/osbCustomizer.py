@@ -7,6 +7,7 @@
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#	1.1.1	Added toggle to replace the original sbconfig jar rather than create a new one. Disabled by default.
 #	1.1.0
 #		Customize: 	MQConnection
 #					Proxy Service and Business Service with transport: MQ, MQConnection, FTP, FILE, SFTP, EMAIL, SB
@@ -32,6 +33,10 @@ import sys, traceback
 import os
 import os.path
 import time
+import shutil
+import glob
+import fnmatch
+import re
 
 from javax.xml.namespace import QName
 
@@ -161,6 +166,13 @@ def findOsbJarEntry(indexName,osbJarEntries):
 		
 	return None
 	
+def findOsbJarEntries(indexName,osbJarEntries):
+	if "*" in indexName:
+		regex = fnmatch.translate(indexName)
+		return [entry for entry in osbJarEntries if re.match(regex, entry.getName())]
+	else:
+		return [entry for entry in osbJarEntries if entry.getName()==indexName]
+	
 
 #===================================================================
 # Parse sbconfig file
@@ -196,6 +208,8 @@ def isDict(val):
 
 def reverseDict(val):
 	if val==None:
+		return []
+	if not isinstance(val,dict):
 		return []
 	list=val.keys()
 	list.reverse()
@@ -239,10 +253,17 @@ def writeToFile(fName, data):
 	fos.close()
 	
 		
-def saveNewSbConfigNoFS(sbFileName,data):		
+def saveNewSbConfigNoFS(sbFileName,data, replaceFile):		
 	index=sbFileName.rfind('.')
-	newSbFileName= sbFileName[0:index] + '-' + time.strftime('%Y%m%d_%H%M%S')+'.jar'
-	print ' New customizated sbconfig is: ' + newSbFileName
+	if (replaceFile):
+		newSbFileName = sbFileName
+		oldSbFileName= sbFileName[0:index] + '-old-' + time.strftime('%Y%m%d_%H%M%S')+'.jar'
+		print ' Moving old sbconfig to: ' + oldSbFileName
+		shutil.copy2(sbFileName, oldSbFileName)
+	else:
+		newSbFileName= sbFileName[0:index] + '-' + time.strftime('%Y%m%d_%H%M%S')+'.jar'
+		print ' New customizated sbconfig is: ' + newSbFileName
+
 	writeToFile(newSbFileName,data)
 	return newSbFileName
 
@@ -1546,22 +1567,40 @@ def customizeSbConfigFile(customizationFile,path):
 
 		for custEntryFile in reverseDict(customizationEntries):
 			#find sbconfigEntry		
-			jarEntry=findOsbJarEntry(custEntryFile,osbJarEntries)
-				
-			if jarEntry==None:
+			#jarEntry=findOsbJarEntry(custEntryFile,osbJarEntries)
+			#
+			#if jarEntry==None:
+			#	print LOG_CUST_FILE + 'Not found Entry: ' + custEntryFile
+			#else:
+			#	print LOG_CUST_FILE + jarEntry.getName()
+			#	sbentry=loadEntryFactory(jarEntry)
+			#	if sbentry!=None:
+			#		#
+			#		execFunctionName = customizationType.lower().strip()+'_'+jarEntry.getExtension().lower().strip()
+			#		#execute customization
+			#		lookupCustomizationFunction(execFunctionName,customizationEntries[custEntryFile],sbentry)
+			#		#update jar entry
+			#		jarEntry.setData(sbentry.toString().encode('utf-8'))
+			#	else:
+			#		print LOG_CUST_FUNCTION + 'Customization is not supported!'
+			#
+			jarEntries=findOsbJarEntries(custEntryFile,osbJarEntries)
+			
+			if not jarEntries:
 				print LOG_CUST_FILE + 'Not found Entry: ' + custEntryFile
 			else:
-				print LOG_CUST_FILE + jarEntry.getName()
-				sbentry=loadEntryFactory(jarEntry)
-				if sbentry!=None:
-					#
-					execFunctionName = customizationType.lower().strip()+'_'+jarEntry.getExtension().lower().strip()
-					#execute customization
-					lookupCustomizationFunction(execFunctionName,customizationEntries[custEntryFile],sbentry)
-					#update jar entry
-					jarEntry.setData(sbentry.toString().encode('utf-8'))
-				else:
-					print LOG_CUST_FUNCTION + 'Customization is not supported!'
+				for jarEntry in jarEntries:
+					print LOG_CUST_FILE + jarEntry.getName()
+					sbentry=loadEntryFactory(jarEntry)
+					if sbentry!=None:
+						#
+						execFunctionName = customizationType.lower().strip()+'_'+jarEntry.getExtension().lower().strip()
+						#execute customization
+						lookupCustomizationFunction(execFunctionName,customizationEntries[custEntryFile],sbentry)
+						#update jar entry
+						jarEntry.setData(sbentry.toString().encode('utf-8'))
+					else:
+						print LOG_CUST_FUNCTION + 'Customization is not supported!'
 	
 	if len(NOT_FOUND_CUSTOMIZATION)!=0:
 		print ' '
@@ -1582,18 +1621,30 @@ def executeCustomization():
 			print '------------------------------------'
 			print ' Customize Config: '+str(sbFileName)
 			sbFile=SB_CUSTOMIZATOR[sbFileName]
-			#customize 
+			#customize
+			replaceFile = sbFile.get('replaceFile', False)
+			print LOG_CUST_FILE+' replaceFile: ' + str(replaceFile)
 			path=str(sbFileName)
-			path= os.path.abspath(path)
-			if os.path.isfile(path) and os.path.exists(path):
-				osbJarEntries= customizeSbConfigFile(sbFile,sbFileName)
+			if "*" in path:
+				possibleMatches = glob.glob(path)
+				print LOG_CUST_FILE+' '+ str(possibleMatches)
+				if (len(possibleMatches) == 1):
+					path = possibleMatches[0]
+					print LOG_CUST_FILE+' Expanded wildcard to: ' + path
+				else:
+					print LOG_CUST_FILE+' Error: ' + str(len(possibleMatches)) + ' matches found for ' + path + ' SB Config file; expecting 1.'
+					exit()
+			
+			absPath= os.path.abspath(path)
+			if os.path.isfile(absPath) and os.path.exists(absPath):
+				osbJarEntries= customizeSbConfigFile(sbFile,path)
 				
 				#generate new sbconfig file
 				data=generateNewSBConfig(osbJarEntries)
 				#deploy
-				return saveNewSbConfigNoFS(sbFileName,data)
+				return saveNewSbConfigNoFS(path,data, replaceFile)
 			else:
-				print LOG_CUST_FILE+' Error: ' + path + ' SB Config file not found'
+				print LOG_CUST_FILE+' Error: ' + absPath + ' SB Config file not found'
 	else:
 		print LOG_CUST_FILE+' Not found customization config: SB_CUSTOMIZATOR'
 
