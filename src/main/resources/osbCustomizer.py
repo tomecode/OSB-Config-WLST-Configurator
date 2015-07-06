@@ -3,10 +3,11 @@
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
 #	Version:                        1.1.0
-#	Description:					
+#	Description:
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#   1.1.2   Added more customisation fields
 #	1.1.1	Added toggle to replace the original sbconfig jar rather than create a new one. Disabled by default.
 #	1.1.0
 #		Customize: 	MQConnection
@@ -138,23 +139,23 @@ class OsbJarEntry:
 	directory=False
 	data=None
 	extension=None
-	
+
 	def __init__(self,n,d,b):
 		self.name=n
 		self.directory=d
 		self.data=b
 		#get extensio name
 		self.extension=os.path.splitext(self.name)[1][1:]
-		
+
 	def getName(self):
 		return self.name
-		
+
 	def getData(self):
 		return self.data
-	
+
 	def setData(self, d):
 		self.data=d
-		
+
 	def getExtension(self):
 		return self.extension.lower()
 
@@ -163,16 +164,16 @@ def findOsbJarEntry(indexName,osbJarEntries):
 	for entry in osbJarEntries:
 		if entry.getName()==indexName:
 			return entry
-		
+
 	return None
-	
+
 def findOsbJarEntries(indexName,osbJarEntries):
 	if "*" in indexName:
 		regex = fnmatch.translate(indexName)
 		return [entry for entry in osbJarEntries if re.match(regex, entry.getName())]
 	else:
 		return [entry for entry in osbJarEntries if entry.getName()==indexName]
-	
+
 
 #===================================================================
 # Parse sbconfig file
@@ -189,7 +190,7 @@ def parseOsbJar(data):
 		else:
 			osbJarEntries.append(OsbJarEntry(entry.toString(), entry.isDirectory(), Utils.readJarEntryToBytes(jis,entry)))
 		entry = jis.getNextJarEntry()
-	
+
 	jis.close()
 	return osbJarEntries
 
@@ -202,7 +203,7 @@ def convertToTuple(values):
 			list.append(val)
 	return list
 
-	
+
 def isDict(val):
 	return ('<type \'dict\'>' in str(type(val)))
 
@@ -251,9 +252,9 @@ def writeToFile(fName, data):
 	fos.write(data)
 	fos.flush()
 	fos.close()
-	
-		
-def saveNewSbConfigNoFS(sbFileName,data, replaceFile):		
+
+
+def saveNewSbConfigNoFS(sbFileName,data, replaceFile):
 	index=sbFileName.rfind('.')
 	if (replaceFile):
 		newSbFileName = sbFileName
@@ -321,27 +322,27 @@ def uploadSbCofnigToOSB(ALSBConfigurationMBean, sbConfigJar):
 
 
 def deployToOsb(file):
-	
+
 	if 'SB_SERVER' in globals():
 		print '	Deploying to OSB: '+ file
-		
+
 		try:
 			if connectToOSB()== True:
 				#create new session
 				sessionMBean, sessionName = createOSBSession()
-				
+
 				ALSBConfigurationMBean = findService(String("ALSBConfiguration.").concat(sessionName), "com.bea.wli.sb.management.configuration.ALSBConfigurationMBean")
 
 				#simple import without customization
 				uploadSbCofnigToOSB(ALSBConfigurationMBean,file)
 
 				print '		..Commiting session, please wait, this can take a while...'
-				sessionMBean.activateSession(sessionName, "Import from wlst") 
+				sessionMBean.activateSession(sessionName, "Import from wlst")
 				print '		..Session was successfully committed!'
 				print '	'
 		except java.lang.Exception, e:
 			print '	Import to OSB: Failed, please see logs...' + '\n	', e
-			dumpStack()	
+			dumpStack()
 			if sessionMBean != None:
 				sessionMBean.discardSession(sessionName)
 	else:
@@ -350,7 +351,7 @@ def deployToOsb(file):
 
 ####	###############################################################################################################################################
 ####	###############################################################################################################################################
-####								
+####
 ####							Customization functions
 ####
 ####	###############################################################################################################################################
@@ -381,10 +382,10 @@ def changeEndpointUri(endpoints,serviceDefinition):
 	if len(endpointConfiguration.getURIArray()) >= 1:
 		#uris=URIType[0]
 		endpointConfiguration.setURIArray([])
-		
+
 	for uri in endpoints:
 		endpointConfiguration.addNewURI().setValue(uri)
-	
+
 def getTransactions(serviceDefinition):
 	transactions=serviceDefinition.getCoreEntry().getTransactions()
 	if transactions==None:
@@ -416,7 +417,7 @@ def findKeyPairForServiceProvider(serviceProviderEntry, prupose):
 			for keyPair in keyPairArray:
 				if prupose in keyPair.getPurpose():
 					return keyPair
-	
+
 	return None
 
 
@@ -526,7 +527,7 @@ def getSbOutboundProperties(serviceDefinition):
 def createPolicyExpression(policyConfig):
 	expression = ''
 	provider =''
-		
+
 	if 'Provider' in reverseDict(policyConfig):
 		print LOG_CUST_FILE+ 'Policy: Provider'
 		provider=policyConfig['Provider']
@@ -534,12 +535,12 @@ def createPolicyExpression(policyConfig):
 		print LOG_CUST_FILE+ 'Policy: Users'
 		for user in convertToTuple(policyConfig['Users']):
 			expression += '| Usr('+ str(user) + ')'
-	
+
 	if 'Groups' in policyConfig:
 		print LOG_CUST_FILE+ 'Policy: Groups'
 		for group in convertToTuple(policyConfig['Groups']):
 			expression += '| Grp('+ str(group) + ')'
-	
+
 	if 'Roles' in policyConfig:
 		print LOG_CUST_FILE+ 'Policy: Roles'
 		for role in convertToTuple(policyConfig['Roles']):
@@ -548,14 +549,14 @@ def createPolicyExpression(policyConfig):
 
 	expression=expression.strip()
 	if expression.startswith('|'):
-		expression=expression[2:len(expression)]	
+		expression=expression[2:len(expression)]
 	return expression,provider
-	
+
 #===================================================================
 # Setup policy expression in service
 #===================================================================
 def setupPolicyExpression(serviceDefinition, policyExpression, provider):
-			
+
 	if len(policyExpression.strip())!=0 and len(provider.strip())!=0:
 		security = getSecurityFromServiceDefinition(serviceDefinition)
 
@@ -594,7 +595,7 @@ def prepareCustomTokenAuthentication(security):
 
 ####	###############################################################################################################################################
 ####	###############################################################################################################################################
-####								
+####
 ####							Customization Start
 ####
 ####	###############################################################################################################################################
@@ -619,7 +620,7 @@ def globaloperationalsettings_operations_resultcaching(entry, val):
 
 def globaloperationalsettings_operations_reporting(entry, val):
 	entry.setReporting(val)
-	
+
 def globaloperationalsettings_operations_logging(entry, val):
 	entry.setLogging(val)
 
@@ -634,11 +635,11 @@ def serviceaccount_serviceaccount_description(entry, val):
 def serviceaccount_serviceaccount_password(entry, val):
 	serviceAccountUserPassword = entry.getServiceAccount().getStaticAccount()
 	serviceAccountUserPassword.setPassword(val)
-	
+
 def serviceaccount_serviceaccount_username(entry, val):
 	serviceAccountUserPassword = entry.getServiceAccount().getStaticAccount()
 	serviceAccountUserPassword.setUsername(val)
-	
+
 #===================================================================
 #	Customize:	UDDI
 #===================================================================
@@ -657,16 +658,16 @@ def uddi_uddiregistry_publishurl(entry, val):
 
 def uddi_uddiregistry_subscriptionurl(entry, val):
 	entry.setSubscriptionUrl(val)
-	
+
 def uddi_uddiregistry_username(entry, val):
 	entry.setUsername(val)
 
 def uddi_uddiregistry_securityurl(entry, val):
 	entry.setSecurityUrl(val)
-	
+
 def uddi_uddiregistry_url(entry, val):
 	entry.setUrl(val)
-	
+
 def uddi_uddiregistry_description(entry, val):
 	entry.setDescription(val)
 
@@ -679,7 +680,7 @@ def jndi_foreignjndiprovider_cachevalues(entry, val):
 
 def jndi_foreignjndiprovider_requesttimeout(entry, val):
 	entry.setRequestTimeout(val)
-	
+
 def jndi_foreignjndiprovider_providerurl(entry, val):
 	entry.setProviderUrl(val)
 
@@ -691,7 +692,7 @@ def jndi_foreignjndiprovider_password(entry, val):
 
 def jndi_foreignjndiprovider_description(entry, val):
 	entry.setDescription(val)
-	
+
 
 #===================================================================
 #	Customize:	SMTP
@@ -708,10 +709,10 @@ def smtp_smtpserver_portnumber(entry, val):
 
 def smtp_smtpserver_serverurl(entry, val):
 	entry.setServerURL(val)
-	
+
 def smtp_smtpserver_username(entry, val):
 	entry.setUsername(val)
-	
+
 def smtp_smtpserver_password(entry, val):
 	entry.setPassword(val)
 
@@ -744,7 +745,7 @@ def proxyserver_proxyserver_servertable(entry, val):
 				print LOG_CUST_FUNCTION + 'SslPort'
 			else:
 				print 'Property is not supported'
-				
+
 		list.append(param)
 	entry.getProxyServer().getServerTable().setServerArray(list)
 
@@ -759,22 +760,82 @@ def local_proxyservice_sametxforresponse(entry, val):
 def local_proxyservice_description(entry, val):
 	entry.getCoreEntry().setDescription(val)
 
+def local_proxyservice_monitoring_isenabled(entry, val):
+	entry.getCoreEntry().getMonitoring().setIsEnabled(val)
+
+def local_proxyservice_monitoring_aggregationinterval(entry, val):
+	entry.getCoreEntry().getMonitoring().setAggregationInterval(val)
+
+def local_proxyservice_monitoring_pipelinemonitoringlevel(entry, val):
+	entry.getCoreEntry().getMonitoring().setPipelineMonitoringLevel(val)
+
+def local_proxyservice_reporting(entry, val):
+	entry.getCoreEntry().setReporting(val)
+
+def local_proxyservice_logging_isenabled(entry, val):
+	entry.getCoreEntry().getLogging().setIsEnabled(val)
+
+def local_proxyservice_logging_loglevel(entry, val):
+	entry.getCoreEntry().getLogging().setLogLevel(val)
+
+def local_proxyservice_slaalerting_isenabled(entry, val):
+	entry.getCoreEntry().getSlaAlerting().setIsEnabled(val)
+
+def local_proxyservice_slaalerting_alertlevel(entry, val):
+	entry.getCoreEntry().getSlaAlerting().setAlertLevel(val)
+
+def local_proxyservice_pipelinealerting_isenabled(entry, val):
+	entry.getCoreEntry().getPipelineAlerting().setIsEnabled(val)
+
+def local_proxyservice_pipelinealerting_alertlevel(entry, val):
+	entry.getCoreEntry().getPipelineAlerting().setAlertLevel(val)
+
 def local_proxyservice_isrequired(entry, val):
 	getTransactions(entry).setIsRequired(val)
 
-#===================================================================	
+#===================================================================
 #	Customize:	Proxy Service: Transport Type: HTTP
 #===================================================================
 
 def http_proxyservice_description(entry, val):
 	entry.getCoreEntry().setDescription(val)
 
+def http_proxyservice_monitoring_isenabled(entry, val):
+	local_proxyservice_monitoring_isenabled(entry, val)
+
+def http_proxyservice_monitoring_aggregationinterval(entry, val):
+	local_proxyservice_monitoring_aggregationinterval(entry, val)
+
+def http_proxyservice_monitoring_pipelinemonitoringlevel(entry, val):
+	local_proxyservice_monitoring_pipelinemonitoringlevel(entry, val)
+
+def http_proxyservice_reporting(entry, val):
+	local_proxyservice_reporting(entry, val)
+
+def http_proxyservice_logging_isenabled(entry, val):
+	local_proxyservice_logging_isenabled(entry, val)
+
+def http_proxyservice_logging_loglevel(entry, val):
+	local_proxyservice_logging_loglevel(entry, val)
+
+def http_proxyservice_slaalerting_isenabled(entry, val):
+	local_proxyservice_slaalerting_isenabled(entry, val)
+
+def http_proxyservice_slaalerting_alertlevel(entry, val):
+	local_proxyservice_slaalerting_alertlevel(entry, val)
+
+def http_proxyservice_pipelinealerting_isenabled(entry, val):
+	local_proxyservice_pipelinealerting_isenabled(entry, val)
+
+def http_proxyservice_pipelinealerting_alertlevel(entry, val):
+	local_proxyservice_pipelinealerting_alertlevel(entry, val)
+
 def http_proxyservice_retrycount(entry, val):
 	getCommonOutboundProperties(entry).setRetryCount(val)
-	
+
 def http_proxyservice_retryinterval(entry, val):
 	getCommonOutboundProperties(entry).setRetryInterval(val)
-	
+
 def http_proxyservice_usehttps(entry, val):
 	getHttpInboundProperties(entry).setUseHttps(val)
 
@@ -795,7 +856,7 @@ def http_proxyservice_isrequired(entry, val):
 
 def http_proxyservice_sametxforresponse(entry, val):
 	getTransactions(entry).setSameTxForResponse(val)
-	
+
 def http_proxyservice_policy(entry, val):
 	policyExpression, provider=createPolicyExpression(val)
 	setupPolicyExpression(entry, policyExpression, provider)
@@ -807,9 +868,9 @@ def http_proxyservice_authentication_basicauthentication(entry, val):
 	getHttpInboundProperties(entry).setClientAuthentication(HttpBasicAuthenticationType.Factory.newInstance())
 
 def http_proxyservice_authentication_customtokenauthentication(entry, val):
-	httpInboundProperties= getHttpInboundProperties(entry)					
+	httpInboundProperties= getHttpInboundProperties(entry)
 	customTokenAuthenticationType = CustomTokenAuthenticationType.Factory.newInstance()
-	
+
 	for v in val:
 		if 'TokenType' in v:
 			customTokenAuthenticationType.setTokenType(val[v])
@@ -825,14 +886,14 @@ def http_proxyservice_authentication_none(entry, val):
 
 def http_proxyservice_security(entry, val):
 	return True
-	
+
 def http_proxyservice_security_customauthentication(entry, val):
 	return True
-	
+
 def http_proxyservice_security_customauthentication_contextproperties(entry, val):
 	security=getSecurityFromServiceDefinition(entry)
 	customTokenAuthentication=prepareCustomTokenAuthentication(security)
-	
+
 	userDefinedContext=customTokenAuthentication.getUserDefinedContext()
 	if userDefinedContext!=None:
 		customTokenAuthentication.unsetUserDefinedContext()
@@ -851,7 +912,7 @@ def http_proxyservice_security_customauthentication_authenticationtype(entry, va
 
 def http_proxyservice_security_customauthentication_authenticationtype_none(entry, val):
 	return 'TODO: not implemented'
-	
+
 def http_paroxyservice_security_customauthentication_authenticationtype_customusernameandpassword(entry, val):
 	security=getSecurityFromServiceDefinition(entry)
 	customTokenAuthentication=prepareCustomTokenAuthentication(security)
@@ -885,7 +946,7 @@ def http_proxyservice_security_customauthentication_authenticationtype_customtok
 	tokenSelector=customToken.getTokenSelector()
 	if tokenSelector==None:
 		customToken.setTokenSelector(XPathSelectorType.Factory.newInstance())
-		tokenSelector=customToken.getTokenSelector()	
+		tokenSelector=customToken.getTokenSelector()
 
 	tokenSelector.setVariable('header')
 	tokenSelector.setXpath(val['Xpath'])
@@ -901,7 +962,7 @@ def http_proxyservice_security_customauthentication_authenticationtype_customuse
 
 	passwordSelector=usernamePassword.getPasswordSelector()
 	if passwordSelector==None:
-		passwordSelector=usernamePassword.addNewPasswordSelector()								
+		passwordSelector=usernamePassword.addNewPasswordSelector()
 
 	usernameSelector=usernamePassword.getUsernameSelector()
 	if usernameSelector==None:
@@ -911,10 +972,10 @@ def http_proxyservice_security_customauthentication_authenticationtype_customuse
 	usernameSelector.setXpath(val['UsernameXpath'])
 
 	passwordSelector.setVariable('header')
-	passwordSelector.setXpath(val['PasswordXpath'])	
+	passwordSelector.setXpath(val['PasswordXpath'])
 
-	
-#===================================================================	
+
+#===================================================================
 #	Customize:	Proxy Service: Transport Type: JMS
 #===================================================================
 
@@ -956,7 +1017,7 @@ def jms_proxyservice_isrequired(entry, val):
 
 def jms_proxyservice_sametxforresponse(entry, val):
 	getTransactions(entry).setSameTxForResponse(val)
-	
+
 def jms_proxyservice_destinationtypequeue(entry, val):
 	lookupCustomizationFunction(sys._getframe().f_code.co_name, val, entry)
 
@@ -980,24 +1041,86 @@ def jms_proxyservice_destinationtypequeue_responsemessagetype(entry, val):
 
 def jms_proxyservice_description(entry, val):
 	entry.getCoreEntry().setDescription(val)
-	
+
+def jms_proxyservice_monitoring_isenabled(entry, val):
+	local_proxyservice_monitoring_isenabled(entry, val)
+
+def jms_proxyservice_monitoring_aggregationinterval(entry, val):
+	local_proxyservice_monitoring_aggregationinterval(entry, val)
+
+def jms_proxyservice_monitoring_pipelinemonitoringlevel(entry, val):
+	local_proxyservice_monitoring_pipelinemonitoringlevel(entry, val)
+
+def jms_proxyservice_reporting(entry, val):
+	local_proxyservice_reporting(entry, val)
+
+def jms_proxyservice_logging_isenabled(entry, val):
+	local_proxyservice_logging_isenabled(entry, val)
+
+def jms_proxyservice_logging_loglevel(entry, val):
+	local_proxyservice_logging_loglevel(entry, val)
+
+def jms_proxyservice_slaalerting_isenabled(entry, val):
+	local_proxyservice_slaalerting_isenabled(entry, val)
+
+def jms_proxyservice_slaalerting_alertlevel(entry, val):
+	local_proxyservice_slaalerting_alertlevel(entry, val)
+
+def jms_proxyservice_pipelinealerting_isenabled(entry, val):
+	local_proxyservice_pipelinealerting_isenabled(entry, val)
+
+def jms_proxyservice_pipelinealerting_alertlevel(entry, val):
+	local_proxyservice_pipelinealerting_alertlevel(entry, val)
+
+
 def jms_proxyservice_policy(entry, val):
 	policyExpression, provider=createPolicyExpression(val)
 	setupPolicyExpression(entry, policyExpression, provider)
 
-#===================================================================	
+#===================================================================
 #	Customize:	BusinessService: Transport Type: HTTP
 #===================================================================
 
 def http_businessservice_description(entry, val):
-	entry.getCoreEntry().setDescription(val)	
+	entry.getCoreEntry().setDescription(val)
+
+def http_businessservice_monitoring_isenabled(entry, val):
+	local_proxyservice_monitoring_isenabled(entry, val)
+
+def http_businessservice_monitoring_aggregationinterval(entry, val):
+	local_proxyservice_monitoring_aggregationinterval(entry, val)
+
+def http_businessservice_monitoring_pipelinemonitoringlevel(entry, val):
+	local_proxyservice_monitoring_pipelinemonitoringlevel(entry, val)
+
+def http_businessservice_reporting(entry, val):
+	local_proxyservice_reporting(entry, val)
+
+def http_businessservice_logging_isenabled(entry, val):
+	local_proxyservice_logging_isenabled(entry, val)
+
+def http_businessservice_logging_loglevel(entry, val):
+	local_proxyservice_logging_loglevel(entry, val)
+
+def http_businessservice_slaalerting_isenabled(entry, val):
+	local_proxyservice_slaalerting_isenabled(entry, val)
+
+def http_businessservice_slaalerting_alertlevel(entry, val):
+	local_proxyservice_slaalerting_alertlevel(entry, val)
+
+def http_businessservice_pipelinealerting_isenabled(entry, val):
+	local_proxyservice_pipelinealerting_isenabled(entry, val)
+
+def http_businessservice_pipelinealerting_alertlevel(entry, val):
+	local_proxyservice_pipelinealerting_alertlevel(entry, val)
+
 
 def http_businessservice_endpointuri(entry, val):
 	changeEndpointUri(convertToTuple(val),entry)
 
 def http_businessservice_readtimeout(entry, val):
 	getHttpOutboundProperties(entry).setTimeout(val)
-	
+
 def http_businessservice_requestencoding(entry, val):
 	getHttpEndPointConfiguration(entry).setRequestEncoding(val)
 
@@ -1006,8 +1129,8 @@ def http_businessservice_responseencoding(entry, val):
 
 def http_businessservice_connectiontimeout(entry, val):
 	getHttpOutboundProperties(entry).setConnectionTimeout(val)
-	
-#===================================================================	
+
+#===================================================================
 #	Customize:	Alert Destination
 #===================================================================
 
@@ -1022,8 +1145,8 @@ def alertdestination_alertdestination_reporting(entry, val):
 
 def alertdestination_alertdestination_snmptrap(entry, val):
 	entry.setAlertToSNMP(val)
-	
-#===================================================================	
+
+#===================================================================
 #	Cutomize:	Service Provider
 #===================================================================
 
@@ -1044,7 +1167,7 @@ def serviceprovider_serviceprovider_ssl_alias(entry, val):
 
 def serviceprovider_serviceprovider_ssl_password(entry, val):
 	serviceprovider_serviceprovider_by_prupose(entry, val, 'SSL', 'Password')
-	
+
 def serviceprovider_serviceprovider_encryption_alias(entry, val):
 	serviceprovider_serviceprovider_by_prupose(entry, val, 'Encryption', 'Alias')
 
@@ -1066,23 +1189,23 @@ def serviceprovider_serviceprovider_by_prupose(entry, val, prupose, attr):
 			keyPair.setAlias(val)
 		else:
 			print LOG_CUST_FILE+ 'Warning: '+val+' property is not supported'
-	
+
 #===================================================================
 #	Customize:	MQConnection
 #===================================================================
 
 def mqconnection_mqconnection_xaenabled(entry, val):
 	entry.setMqXaEnabled(val)
-	
+
 def mqconnection_mqconnection_mqconnectionmaxwait(entry, val):
 	entry.setMqConnMaxWait(val)
-	
+
 def mqconnection_mqconnection_mqconnectionpoolsize(entry, val):
 	entry.setMqConnPoolSize(val)
 
 def mqconnection_mqconnection_mqconnectiontimeout(entry, val):
 	entry.setMqConnTimeout(val)
-	
+
 def mqconnection_mqconnection_mqversion(entry, val):
 	entry.setMqVersion(val)
 
@@ -1095,7 +1218,7 @@ def mqconnection_mqconnection_bindingmode(entry, val):
 
 def mqconnection_mqconnection_bindingmode_mqqueuemanagername(entry, val):
 	entry.getBindingsMode().setQueueManagerName(val)
-	
+
 def mqconnection_mqconnection_tcpmode(entry, val):
 	return True
 
@@ -1105,7 +1228,7 @@ def mqconnection_mqconnection_tcpmode(entry, val):
 
 def mqconnection_mqconnection_tcpmode_mqqueuemanagername(entry, val):
 	entry.getTcpMode().setQueueManagerName(val)
-	
+
 def mqconnection_mqconnection_tcpmode_mqqueuemanagerchannelname(entry, val):
 	entry.getTcpMode().setQueueManagerChannelName(val)
 
@@ -1118,7 +1241,7 @@ def mqconnection_mqconnection_tcpmode_mqhostname(entry, val):
 def mqconnection_mqconnection_tcpmode_queuemanagerccsid(entry, val):
 	entry.getTcpMode().setQueueManagerCcsid(val)
 
-#===================================================================	
+#===================================================================
 #	Customize:	BusinessService: Transport Type: MQ
 #===================================================================
 
@@ -1127,7 +1250,7 @@ def mq_businessservice_endpointuri(entry, val):
 
 def mq_businessservice_retrycount(entry, val):
 	getCommonOutboundProperties(entry).setRetryCount(val)
-	
+
 def mq_businessservice_retryinterval(entry, val):
 	getCommonOutboundProperties(entry).setRetryInterval(val)
 
@@ -1139,7 +1262,7 @@ def mq_businessservice_messagetype(entry, val):
 	else:
 		print LOG_CUST_FILE+ 'Warning: '+val+' property is not supported for message type'
 
-			
+
 def mq_businessservice_responsetimeout(entry, val):
 	getMqOutboundProperties(entry).setResponseTimeout(val)
 
@@ -1156,7 +1279,7 @@ def mq_businessservice_processrfh2headers(entry, val):
 	getMqOutboundProperties(entry).setProcessRfh2(val)
 
 
-#===================================================================	
+#===================================================================
 #	Customize:	ProxyService: Transport Type: MQ
 #===================================================================
 
@@ -1165,7 +1288,7 @@ def mq_proxyservice_endpointuri(entry, val):
 
 def mq_proxyservice_mqresponseuri(entry, val):
 	inboundProperties, mqInboundProperties=getMqInboundProperties(entry)
-	mqInboundProperties.setResponseURI(val)	
+	mqInboundProperties.setResponseURI(val)
 	inboundProperties.set(mqInboundProperties)
 
 def mq_proxyservice_responsemessagetype(entry, val):
@@ -1179,15 +1302,15 @@ def mq_proxyservice_responsemessagetype(entry, val):
 
 def mq_proxyservice_retrycount(entry, val):
 	inboundProperties, mqInboundProperties=getMqInboundProperties(entry)
-	mqInboundProperties.setRetryCount(val)	
+	mqInboundProperties.setRetryCount(val)
 	inboundProperties.set(mqInboundProperties)
 
 def mq_proxyservice_pollinginterval(entry, val):
 	inboundProperties, mqInboundProperties=getMqInboundProperties(entry)
-	mqInboundProperties.setPollingInterval(val)	
+	mqInboundProperties.setPollingInterval(val)
 	inboundProperties.set(mqInboundProperties)
 
-#===================================================================	
+#===================================================================
 #	Customize:	ProxyService: Transport Type: FTP
 #===================================================================
 
@@ -1244,7 +1367,7 @@ def ftp_proxyservice_filemask(entry, val):
 	ftpInboundProperties.setFileMask(val)
 	inboundProperties.set(ftpInboundProperties)
 
-#===================================================================	
+#===================================================================
 #	Customize:	BusinessService: Transport Type: FTP
 #===================================================================
 
@@ -1316,7 +1439,7 @@ def file_proxyservice_filemask(entry, val):
 	fileInBoundProperties.setFileMask(val)
 	inboundProperties.set(fileInBoundProperties)
 
-#===================================================================	
+#===================================================================
 #	Customize:	BusinessService: Transport Type: FTP
 #===================================================================
 
@@ -1335,7 +1458,7 @@ def file_businessservice_retrycount(entry, val):
 def file_businessservice_retryinterval(entry, val):
 	getCommonOutboundProperties(entry).setRetryInterval(val)
 
-#===================================================================	
+#===================================================================
 #	Customize:	ProxyService: Transport Type: SFTP
 #===================================================================
 
@@ -1343,7 +1466,7 @@ def sftp_proxyservice_endpointuri(entry, val):
 	changeEndpointUri(convertToTuple(val),entry)
 
 def sftp_proxyservice_retrycount(entry, val):
-	getSftpInboundProperties(entry).setRetryCount(val)	
+	getSftpInboundProperties(entry).setRetryCount(val)
 def sftp_proxyservice_sortbyarrival(entry, val):
 	getSftpInboundProperties(entry).setSortByArrival(val)
 
@@ -1382,7 +1505,7 @@ def sftp_proxyservice_downloaddir(entry , val):
 		getSftpInboundProperties(entry).addNewDownloadDirectory()
 	getSftpInboundProperties(entry).getDownloadDirectory().setValue(val)
 
-#===================================================================	
+#===================================================================
 #	Customize:	BusinessService: Transport Type: SFTP
 #===================================================================
 
@@ -1401,7 +1524,7 @@ def sftp_businessservice_retrycount(entry, val):
 def sftp_businessservice_retryinterval(entry, val):
 	getCommonOutboundProperties(entry).setRetryInterval(val)
 
-#===================================================================	
+#===================================================================
 #	Customize:	ProxyService: Transport Type: EMAIL
 #===================================================================
 
@@ -1438,7 +1561,7 @@ def email_proxyservice_downloaddir(entry, val):
 		getEmailInboundProperties(entry).addNewDownloadDirectory()
 	getEmailInboundProperties(entry).getDownloadDirectory().setValue(val)
 
-#===================================================================	
+#===================================================================
 #	Customize:	BusinessService: Transport Type: EMAIL
 #===================================================================
 
@@ -1473,9 +1596,42 @@ def email_businessservice_sockettimeout(entry, val):
 	getEmailOutboundProperties(entry).setTimeout(val)
 
 
-#===================================================================	
+#===================================================================
 #	Customize:	ProxyService: Transport Type: SB
 #===================================================================
+
+def sb_proxyservice_description(entry, val):
+	local_proxyservice_description(entry, val)
+
+def sb_proxyservice_monitoring_isenabled(entry, val):
+	local_proxyservice_monitoring_isenabled(entry, val)
+
+def sb_proxyservice_monitoring_aggregationinterval(entry, val):
+	local_proxyservice_monitoring_aggregationinterval(entry, val)
+
+def sb_proxyservice_monitoring_pipelinemonitoringlevel(entry, val):
+	local_proxyservice_monitoring_pipelinemonitoringlevel(entry, val)
+
+def sb_proxyservice_reporting(entry, val):
+	local_proxyservice_reporting(entry, val)
+
+def sb_proxyservice_logging_isenabled(entry, val):
+	local_proxyservice_logging_isenabled(entry, val)
+
+def sb_proxyservice_logging_loglevel(entry, val):
+	local_proxyservice_logging_loglevel(entry, val)
+
+def sb_proxyservice_slaalerting_isenabled(entry, val):
+	local_proxyservice_slaalerting_isenabled(entry, val)
+
+def sb_proxyservice_slaalerting_alertlevel(entry, val):
+	local_proxyservice_slaalerting_alertlevel(entry, val)
+
+def sb_proxyservice_pipelinealerting_isenabled(entry, val):
+	local_proxyservice_pipelinealerting_isenabled(entry, val)
+
+def sb_proxyservice_pipelinealerting_alertlevel(entry, val):
+	local_proxyservice_pipelinealerting_alertlevel(entry, val)
 
 def sb_proxyservice_endpointuri(entry, val):
 	changeEndpointUri(convertToTuple(val),entry)
@@ -1483,9 +1639,39 @@ def sb_proxyservice_endpointuri(entry, val):
 def sb_proxyservice_ssluse(entry, val):
 	getSbInboundProperties(entry).setUseSsl(val)
 
-#===================================================================	
+#===================================================================
 #	Customize:	BusinessService: Transport Type: SB
 #===================================================================
+def sb_businessservice_monitoring_isenabled(entry, val):
+	local_proxyservice_monitoring_isenabled(entry, val)
+
+def sb_businessservice_monitoring_aggregationinterval(entry, val):
+	local_proxyservice_monitoring_aggregationinterval(entry, val)
+
+def sb_businessservice_monitoring_pipelinemonitoringlevel(entry, val):
+	local_proxyservice_monitoring_pipelinemonitoringlevel(entry, val)
+
+def sb_businessservice_reporting(entry, val):
+	local_proxyservice_reporting(entry, val)
+
+def sb_businessservice_logging_isenabled(entry, val):
+	local_proxyservice_logging_isenabled(entry, val)
+
+def sb_businessservice_logging_loglevel(entry, val):
+	local_proxyservice_logging_loglevel(entry, val)
+
+def sb_businessservice_slaalerting_isenabled(entry, val):
+	local_proxyservice_slaalerting_isenabled(entry, val)
+
+def sb_businessservice_slaalerting_alertlevel(entry, val):
+	local_proxyservice_slaalerting_alertlevel(entry, val)
+
+def sb_businessservice_pipelinealerting_isenabled(entry, val):
+	local_proxyservice_pipelinealerting_isenabled(entry, val)
+
+def sb_businessservice_pipelinealerting_alertlevel(entry, val):
+	local_proxyservice_pipelinealerting_alertlevel(entry, val)
+
 def sb_businessservice_endpointuri(entry, val):
 	changeEndpointUri(convertToTuple(val),entry)
 
@@ -1503,7 +1689,7 @@ def sb_businessservice_retryinterval(entry, val):
 
 ####	###############################################################################################################################################
 ####	###############################################################################################################################################
-####								
+####
 ####							Customization End
 ####
 ####	###############################################################################################################################################
@@ -1526,13 +1712,13 @@ def loadEntryFactory(jarEntry):
 	elif jarEntry.getExtension()=='SMTPServer'.lower():
 		return SmtpServerEntry.Factory.parse(ByteArrayInputStream(jarEntry.getData()))
 	elif jarEntry.getExtension()=='ProxyServer'.lower():
-		return ProxyServerDocument.Factory.parse(ByteArrayInputStream(jarEntry.getData()))	
+		return ProxyServerDocument.Factory.parse(ByteArrayInputStream(jarEntry.getData()))
 	elif jarEntry.getExtension()=='AlertDestination'.lower():
-		return AlertDestination.Factory.parse(ByteArrayInputStream(jarEntry.getData()))	
+		return AlertDestination.Factory.parse(ByteArrayInputStream(jarEntry.getData()))
 	elif jarEntry.getExtension()=='ServiceProvider'.lower():
-		return ServiceProviderEntry.Factory.parse(ByteArrayInputStream(jarEntry.getData()))	
+		return ServiceProviderEntry.Factory.parse(ByteArrayInputStream(jarEntry.getData()))
 	elif jarEntry.getExtension()=='MQConnection'.lower():
-		return MqConnectionEntry.Factory.parse(ByteArrayInputStream(jarEntry.getData()))	
+		return MqConnectionEntry.Factory.parse(ByteArrayInputStream(jarEntry.getData()))
 	else:
 		return None
 
@@ -1541,12 +1727,12 @@ def loadEntryFactory(jarEntry):
 def lookupCustomizationFunction(functionName, parent, entry):
 	for setFunction in reverseDict(parent):
 		impleSetFunction= (functionName + '_' + setFunction).lower()
-		
+
 		#print 'CustFunct: ' + impleSetFunction
 		print LOG_CUST_FUNCTION + setFunction
-		
+
 		#if the customization function return True than exists another customization function
-		if impleSetFunction in globals():			
+		if impleSetFunction in globals():
 			if (globals()[impleSetFunction](entry, parent[setFunction])):
 				if isDict(parent[setFunction]):
 					lookupCustomizationFunction(impleSetFunction, parent[setFunction],entry)
@@ -1557,16 +1743,16 @@ def lookupCustomizationFunction(functionName, parent, entry):
 
 def customizeSbConfigFile(customizationFile,path):
 	osbJarEntries=parseOsbJar(readBinaryFile(path))
-	
+
 	print 'Customize the following files:'
 
-	#customize services by transport type...	
+	#customize services by transport type...
 	for customizationType in reverseDict(customizationFile):
 		#print '--> '+ customizationType
 		customizationEntries=customizationFile[customizationType]
 
 		for custEntryFile in reverseDict(customizationEntries):
-			#find sbconfigEntry		
+			#find sbconfigEntry
 			#jarEntry=findOsbJarEntry(custEntryFile,osbJarEntries)
 			#
 			#if jarEntry==None:
@@ -1585,7 +1771,7 @@ def customizeSbConfigFile(customizationFile,path):
 			#		print LOG_CUST_FUNCTION + 'Customization is not supported!'
 			#
 			jarEntries=findOsbJarEntries(custEntryFile,osbJarEntries)
-			
+
 			if not jarEntries:
 				print LOG_CUST_FILE + 'Not found Entry: ' + custEntryFile
 			else:
@@ -1601,7 +1787,7 @@ def customizeSbConfigFile(customizationFile,path):
 						jarEntry.setData(sbentry.toString().encode('utf-8'))
 					else:
 						print LOG_CUST_FUNCTION + 'Customization is not supported!'
-	
+
 	if len(NOT_FOUND_CUSTOMIZATION)!=0:
 		print ' '
 		print '------------------------------------'
@@ -1612,7 +1798,7 @@ def customizeSbConfigFile(customizationFile,path):
 		print ' '
 	#generate new SB Config
 	return osbJarEntries
-	
+
 
 def executeCustomization():
 	if 'SB_CUSTOMIZATOR' in globals():
@@ -1634,11 +1820,11 @@ def executeCustomization():
 				else:
 					print LOG_CUST_FILE+' Error: ' + str(len(possibleMatches)) + ' matches found for ' + path + ' SB Config file; expecting 1.'
 					exit()
-			
+
 			absPath= os.path.abspath(path)
 			if os.path.isfile(absPath) and os.path.exists(absPath):
 				osbJarEntries= customizeSbConfigFile(sbFile,path)
-				
+
 				#generate new sbconfig file
 				data=generateNewSBConfig(osbJarEntries)
 				#deploy
@@ -1655,7 +1841,7 @@ try:
 	print '	'
 	print '	'
 	print '	'
-	
+
 	if len(sys.argv)!=2:
 		print '	Not found OSB Customization file!'
 		print '	Execute: ./osbCustomizer.(sh/cmd) osbCustomizer.properties'
@@ -1664,7 +1850,7 @@ try:
 		exit()
 
 	f=sys.argv[1]
-	
+
 	print ' Load customization file: '  + f
 	f = os.path.abspath(f)
 	exec open(str(f),'r')
@@ -1673,7 +1859,7 @@ try:
 	deployToOsb(deployFile)
 
 except Exception, err:
-	print ' Failed Execute customization file: '+ f 
+	print ' Failed Execute customization file: '+ f
 	traceback.print_exc()
 	#or
 	print sys.exc_info()[0]
