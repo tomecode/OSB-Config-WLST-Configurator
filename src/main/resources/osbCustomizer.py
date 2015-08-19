@@ -7,7 +7,10 @@
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
-#   1.1.2   Added more customisation fields
+# 	1.1.5 	Updated to properly support proxy service inbound properties
+# 	1.1.4 	Added ability to change biz from sb transport to http transport
+#	1.1.3	Added ability to do token replacement
+#	1.1.2	Added more customisation fields
 #	1.1.1	Added toggle to replace the original sbconfig jar rather than create a new one. Disabled by default.
 #	1.1.0
 #		Customize: 	MQConnection
@@ -67,6 +70,7 @@ from com.bea.wli.sb.transports.http import HttpEndPointConfiguration
 from com.bea.wli.sb.transports.http import HttpInboundPropertiesType
 from com.bea.wli.sb.transports.http import HttpOutboundPropertiesType
 from com.bea.wli.sb.transports.http import HttpRequestMethodEnum
+from com.bea.wli.sb.transports.http import SessionStickinessType
 
 from com.bea.wli.sb.transports.mq import MQInboundProperties
 from com.bea.wli.sb.transports.mq import MQEndPointConfiguration
@@ -258,7 +262,7 @@ def saveNewSbConfigNoFS(sbFileName,data, replaceFile):
 	index=sbFileName.rfind('.')
 	if (replaceFile):
 		newSbFileName = sbFileName
-		oldSbFileName= sbFileName[0:index] + '-old-' + time.strftime('%Y%m%d_%H%M%S')+'.jar'
+		oldSbFileName= sbFileName[0:index] + '-' + time.strftime('%Y%m%d_%H%M%S')+'.jar.old'
 		print ' Moving old sbconfig to: ' + oldSbFileName
 		shutil.copy2(sbFileName, oldSbFileName)
 	else:
@@ -407,8 +411,9 @@ def getHttpOutboundProperties(serviceDefinition):
 	return outboundProperties
 
 def getHttpEndPointConfiguration(serviceDefinition):
-	HttpEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
-	return HttpEndPointConfiguration
+	providerSpecific=serviceDefinition.getEndpointConfig().getProviderSpecific()
+	providerSpecific = providerSpecific.changeType(HttpEndPointConfiguration.type)
+	return providerSpecific
 
 def findKeyPairForServiceProvider(serviceProviderEntry, prupose):
 	if serviceProviderEntry.getCredentials()!=None:
@@ -760,6 +765,18 @@ def local_proxyservice_sametxforresponse(entry, val):
 def local_proxyservice_description(entry, val):
 	entry.getCoreEntry().setDescription(val)
 
+def local_proxyservice_monitoring(entry, val):
+	return True # parent group
+
+def local_proxyservice_logging(entry, val):
+	return True # parent group
+
+def local_proxyservice_slaalerting(entry, val):
+	return True # parent group
+
+def local_proxyservice_pipelinealerting(entry, val):
+	return True # parent group
+
 def local_proxyservice_monitoring_isenabled(entry, val):
 	entry.getCoreEntry().getMonitoring().setIsEnabled(val)
 
@@ -799,6 +816,18 @@ def local_proxyservice_isrequired(entry, val):
 
 def http_proxyservice_description(entry, val):
 	entry.getCoreEntry().setDescription(val)
+
+def http_proxyservice_monitoring(entry, val):
+	return True
+
+def http_proxyservice_logging(entry, val):
+	return True
+
+def http_proxyservice_slaalerting(entry, val):
+	return True
+
+def http_proxyservice_pipelinealerting(entry, val):
+	return True
 
 def http_proxyservice_monitoring_isenabled(entry, val):
 	local_proxyservice_monitoring_isenabled(entry, val)
@@ -1041,6 +1070,18 @@ def jms_proxyservice_destinationtypequeue_responsemessagetype(entry, val):
 
 def jms_proxyservice_description(entry, val):
 	entry.getCoreEntry().setDescription(val)
+	
+def jms_proxyservice_monitoring(entry, val):
+	return True
+
+def jms_proxyservice_logging(entry, val):
+	return True
+
+def jms_proxyservice_slaalerting(entry, val):
+	return True
+
+def jms_proxyservice_pipelinealerting(entry, val):
+	return True
 
 def jms_proxyservice_monitoring_isenabled(entry, val):
 	local_proxyservice_monitoring_isenabled(entry, val)
@@ -1083,6 +1124,18 @@ def jms_proxyservice_policy(entry, val):
 
 def http_businessservice_description(entry, val):
 	entry.getCoreEntry().setDescription(val)
+
+def http_businessservice_monitoring(entry, val):
+	return True
+
+def http_businessservice_logging(entry, val):
+	return True
+
+def http_businessservice_slaalerting(entry, val):
+	return True
+
+def http_businessservice_pipelinealerting(entry, val):
+	return True
 
 def http_businessservice_monitoring_isenabled(entry, val):
 	local_proxyservice_monitoring_isenabled(entry, val)
@@ -1129,6 +1182,42 @@ def http_businessservice_responseencoding(entry, val):
 
 def http_businessservice_connectiontimeout(entry, val):
 	getHttpOutboundProperties(entry).setConnectionTimeout(val)
+	
+def http_businessservice_requestmethod(entry, val):
+	getHttpOutboundProperties(entry).setRequestMethod(HttpRequestMethodEnum.Enum.forString(val))
+	
+def http_businessservice_followredirects(entry, val):
+	getHttpOutboundProperties(entry).setFollowRedirects(val)	
+	
+def http_businessservice_chunkedstreamingmode(entry, val):
+	getHttpOutboundProperties(entry).setChunkedStreamingMode(val)	
+	
+def http_businessservice_sessionsctikiness(entry, val):
+	if getHttpOutboundProperties(entry).getSessionSctikiness() == None:
+		getHttpOutboundProperties(entry).addNewSessionSctikiness()
+		getHttpOutboundProperties(entry).getSessionSctikiness().changeType(SessionStickinessType.type)
+		
+	getHttpOutboundProperties(entry).getSessionSctikiness().setEnabled(val)
+	# assumed to always be JSESSIONID
+	getHttpOutboundProperties(entry).getSessionSctikiness().setSessionIdName('JSESSIONID')	
+
+def http_businessservice_providerid(entry, val):
+	endPointConfiguration=entry.getEndpointConfig()
+	if val.lower() == 'sb' and endPointConfiguration.getProviderId() != 'sb':
+		# change from http to sb as requested
+		endPointConfiguration.setProviderId('sb')
+		endPointConfiguration.unsetProviderSpecific()
+		providerSpec = endPointConfiguration.addNewProviderSpecific()
+		providerSpec = providerSpec.changeType(SBEndPointConfiguration.type)		
+		providerSpec.addNewOutboundProperties()
+		
+		# set some defaults
+		sb_businessservice_timeout(entry, 15)
+		sb_businessservice_retryinterval(entry, 30)
+	else:
+		# not supported
+		return True
+		
 
 #===================================================================
 #	Customize:	Alert Destination
@@ -1603,6 +1692,18 @@ def email_businessservice_sockettimeout(entry, val):
 def sb_proxyservice_description(entry, val):
 	local_proxyservice_description(entry, val)
 
+def sb_proxyservice_monitoring(entry, val):
+	return True
+
+def sb_proxyservice_logging(entry, val):
+	return True
+
+def sb_proxyservice_slaalerting(entry, val):
+	return True
+
+def sb_proxyservice_pipelinealerting(entry, val):
+	return True
+
 def sb_proxyservice_monitoring_isenabled(entry, val):
 	local_proxyservice_monitoring_isenabled(entry, val)
 
@@ -1642,6 +1743,19 @@ def sb_proxyservice_ssluse(entry, val):
 #===================================================================
 #	Customize:	BusinessService: Transport Type: SB
 #===================================================================
+
+def sb_businessservice_monitoring(entry, val):
+	return True
+
+def sb_businessservice_logging(entry, val):
+	return True
+
+def sb_businessservice_slaalerting(entry, val):
+	return True
+
+def sb_businessservice_pipelinealerting(entry, val):
+	return True
+
 def sb_businessservice_monitoring_isenabled(entry, val):
 	local_proxyservice_monitoring_isenabled(entry, val)
 
@@ -1686,6 +1800,28 @@ def sb_businessservice_retryapplicationerrors(entry, val):
 
 def sb_businessservice_retryinterval(entry, val):
 	getCommonOutboundProperties(entry).setRetryInterval(val)
+	
+def sb_businessservice_providerid(entry, val):
+	endPointConfiguration=entry.getEndpointConfig()
+	if val.lower() == 'http' and endPointConfiguration.getProviderId() != 'http':
+		# change from sb to http as requested
+		endPointConfiguration.setProviderId('http')
+		
+		endPointConfiguration.unsetProviderSpecific()
+		providerSpec = endPointConfiguration.addNewProviderSpecific()
+		providerSpec = providerSpec.changeType(HttpEndPointConfiguration.type)		
+		providerSpec.addNewOutboundProperties()
+		
+		# set some defaults
+		http_businessservice_requestmethod(entry, 'POST')
+		http_businessservice_readtimeout(entry, 15)
+		http_businessservice_connectiontimeout(entry, 20)
+		http_businessservice_followredirects(entry, false)
+		http_businessservice_chunkedstreamingmode(entry, true)
+		http_businessservice_sessionsctikiness(entry, false)		
+	else:
+		# not supported
+		return True
 
 ####	###############################################################################################################################################
 ####	###############################################################################################################################################
@@ -1752,24 +1888,6 @@ def customizeSbConfigFile(customizationFile,path):
 		customizationEntries=customizationFile[customizationType]
 
 		for custEntryFile in reverseDict(customizationEntries):
-			#find sbconfigEntry
-			#jarEntry=findOsbJarEntry(custEntryFile,osbJarEntries)
-			#
-			#if jarEntry==None:
-			#	print LOG_CUST_FILE + 'Not found Entry: ' + custEntryFile
-			#else:
-			#	print LOG_CUST_FILE + jarEntry.getName()
-			#	sbentry=loadEntryFactory(jarEntry)
-			#	if sbentry!=None:
-			#		#
-			#		execFunctionName = customizationType.lower().strip()+'_'+jarEntry.getExtension().lower().strip()
-			#		#execute customization
-			#		lookupCustomizationFunction(execFunctionName,customizationEntries[custEntryFile],sbentry)
-			#		#update jar entry
-			#		jarEntry.setData(sbentry.toString().encode('utf-8'))
-			#	else:
-			#		print LOG_CUST_FUNCTION + 'Customization is not supported!'
-			#
 			jarEntries=findOsbJarEntries(custEntryFile,osbJarEntries)
 
 			if not jarEntries:
@@ -1779,7 +1897,7 @@ def customizeSbConfigFile(customizationFile,path):
 					print LOG_CUST_FILE + jarEntry.getName()
 					sbentry=loadEntryFactory(jarEntry)
 					if sbentry!=None:
-						#
+						# dynamic function name, eg. sb_businessservice
 						execFunctionName = customizationType.lower().strip()+'_'+jarEntry.getExtension().lower().strip()
 						#execute customization
 						lookupCustomizationFunction(execFunctionName,customizationEntries[custEntryFile],sbentry)
@@ -1799,6 +1917,29 @@ def customizeSbConfigFile(customizationFile,path):
 	#generate new SB Config
 	return osbJarEntries
 
+def tokenReplaceSbConfigFile(tokens, osbJarEntries):
+	print 'Token replacement on the following files:'
+	for jarEntry in osbJarEntries:
+		sbentry = loadEntryFactory(jarEntry)
+		hasPrintedHeader = False
+		if sbentry != None:
+			# do token replacement
+			
+			sbentryAsString = sbentry.toString()
+			for token in SB_CUSTOMIZATOR_TOKENS:
+				if (token in sbentryAsString):
+					if (not hasPrintedHeader):
+						print LOG_CUST_FILE + jarEntry.getName()
+						hasPrintedHeader = True
+					if ('PASSWORD' in token.upper()):
+						#mask passwords
+						print LOG_CUST_FUNCTION + token + '->' + '*' * len(SB_CUSTOMIZATOR_TOKENS[token])
+					else:
+						print LOG_CUST_FUNCTION + token + '->' + SB_CUSTOMIZATOR_TOKENS[token] + ' (masked)'
+					sbentryAsString = sbentryAsString.replace(token, SB_CUSTOMIZATOR_TOKENS[token])
+			
+			jarEntry.setData(sbentryAsString.encode('utf-8'))
+	return osbJarEntries
 
 def executeCustomization():
 	if 'SB_CUSTOMIZATOR' in globals():
@@ -1824,7 +1965,9 @@ def executeCustomization():
 			absPath= os.path.abspath(path)
 			if os.path.isfile(absPath) and os.path.exists(absPath):
 				osbJarEntries= customizeSbConfigFile(sbFile,path)
-
+				if 'SB_CUSTOMIZATOR_TOKENS' in globals():
+					osbJarEntries=tokenReplaceSbConfigFile(SB_CUSTOMIZATOR_TOKENS, osbJarEntries)
+				
 				#generate new sbconfig file
 				data=generateNewSBConfig(osbJarEntries)
 				#deploy
