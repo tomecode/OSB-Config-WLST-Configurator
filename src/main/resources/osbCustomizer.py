@@ -2,11 +2,12 @@
 #
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
-#	Version:                        1.1.0
+#	Version:                        1.1.6
 #	Description:
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#	1.1.6	Fixed bug preventing customisation of multiple files at once
 # 	1.1.5 	Updated to properly support proxy service inbound properties
 # 	1.1.4 	Added ability to change biz from sb transport to http transport
 #	1.1.3	Added ability to do token replacement
@@ -288,7 +289,10 @@ def connectToOSB():
 	print ' '
 	print '------------------------------------'
 	print ' --- Connecting to OSB server '
-	uri = 't3://' + SB_SERVER['ListenAddress'] + ':' + str(SB_SERVER['ListenPort'])
+	if 'Url' in SB_SERVER:
+		uri = SB_SERVER['Url']
+	else:
+		uri = 't3://' + SB_SERVER['ListenAddress'] + ':' + str(SB_SERVER['ListenPort'])
 	try:
 		connect(SB_SERVER['Username'],SB_SERVER['Password'],uri)
 		domainRuntime()
@@ -325,10 +329,10 @@ def uploadSbCofnigToOSB(ALSBConfigurationMBean, sbConfigJar):
 	importResult= createImportProject(ALSBConfigurationMBean)
 
 
-def deployToOsb(file):
+def deployToOsb(files):
 
 	if 'SB_SERVER' in globals():
-		print '	Deploying to OSB: '+ file
+		print '	Deploying to OSB: '+ ', '.join(files)
 
 		try:
 			if connectToOSB()== True:
@@ -338,7 +342,8 @@ def deployToOsb(file):
 				ALSBConfigurationMBean = findService(String("ALSBConfiguration.").concat(sessionName), "com.bea.wli.sb.management.configuration.ALSBConfigurationMBean")
 
 				#simple import without customization
-				uploadSbCofnigToOSB(ALSBConfigurationMBean,file)
+				for file in files:
+					uploadSbCofnigToOSB(ALSBConfigurationMBean,file)
 
 				print '		..Commiting session, please wait, this can take a while...'
 				sessionMBean.activateSession(sessionName, "Import from wlst")
@@ -350,7 +355,7 @@ def deployToOsb(file):
 			if sessionMBean != None:
 				sessionMBean.discardSession(sessionName)
 	else:
-		print 'Deployment to OSB is disable'
+		print 'Deployment to OSB is disabled'
 
 
 ####	###############################################################################################################################################
@@ -1918,7 +1923,7 @@ def customizeSbConfigFile(customizationFile,path):
 	return osbJarEntries
 
 def tokenReplaceSbConfigFile(tokens, osbJarEntries):
-	print 'Token replacement on the following files:'
+	print 'Tokens found and replaced on the following files:'
 	for jarEntry in osbJarEntries:
 		sbentry = loadEntryFactory(jarEntry)
 		hasPrintedHeader = False
@@ -1942,6 +1947,7 @@ def tokenReplaceSbConfigFile(tokens, osbJarEntries):
 	return osbJarEntries
 
 def executeCustomization():
+	customized_files = []
 	if 'SB_CUSTOMIZATOR' in globals():
 		for sbFileName in SB_CUSTOMIZATOR:
 			print ' '
@@ -1960,7 +1966,7 @@ def executeCustomization():
 					print LOG_CUST_FILE+' Expanded wildcard to: ' + path
 				else:
 					print LOG_CUST_FILE+' Error: ' + str(len(possibleMatches)) + ' matches found for ' + path + ' SB Config file; expecting 1.'
-					exit()
+					exit(exitcode=1)
 
 			absPath= os.path.abspath(path)
 			if os.path.isfile(absPath) and os.path.exists(absPath):
@@ -1971,11 +1977,12 @@ def executeCustomization():
 				#generate new sbconfig file
 				data=generateNewSBConfig(osbJarEntries)
 				#deploy
-				return saveNewSbConfigNoFS(path,data, replaceFile)
+				customized_files.append(saveNewSbConfigNoFS(path,data, replaceFile))
 			else:
 				print LOG_CUST_FILE+' Error: ' + absPath + ' SB Config file not found'
 	else:
 		print LOG_CUST_FILE+' Not found customization config: SB_CUSTOMIZATOR'
+	return customized_files
 
 try:
 	print '################################################################################'
@@ -1998,8 +2005,8 @@ try:
 	f = os.path.abspath(f)
 	exec open(str(f),'r')
 
-	deployFile=executeCustomization()
-	deployToOsb(deployFile)
+	deployFiles=executeCustomization()
+	deployToOsb(deployFiles)
 
 except Exception, err:
 	print ' Failed Execute customization file: '+ f
