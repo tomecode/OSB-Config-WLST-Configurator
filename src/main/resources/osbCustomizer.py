@@ -2,11 +2,12 @@
 #
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
-#	Version:                        1.1.6
+#	Version:                        1.1.7
 #	Description:
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#	1.1.7	Updated for sb inbound services
 #	1.1.6	Fixed bug preventing customisation of multiple files at once
 # 	1.1.5 	Updated to properly support proxy service inbound properties
 # 	1.1.4 	Added ability to change biz from sb transport to http transport
@@ -514,8 +515,9 @@ def getEmailOutboundProperties(serviceDefinition):
 	return outboundProperties
 
 def getSBEndPointConfiguration(serviceDefinition):
-	SBEndPointConfiguration=serviceDefinition.getEndpointConfig().getProviderSpecific()
-	return SBEndPointConfiguration
+	providerSpecific=serviceDefinition.getEndpointConfig().getProviderSpecific()
+	providerSpecific = providerSpecific.changeType(SBEndPointConfiguration.type)
+	return providerSpecific
 
 def getSbInboundProperties(serviceDefinition):
 	SBEndPointConfiguration = getSBEndPointConfiguration(serviceDefinition)
