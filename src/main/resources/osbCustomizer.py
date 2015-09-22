@@ -1940,9 +1940,9 @@ def tokenReplaceSbConfigFile(tokens, osbJarEntries):
 						hasPrintedHeader = True
 					if ('PASSWORD' in token.upper()):
 						#mask passwords
-						print LOG_CUST_FUNCTION + token + '->' + '*' * len(SB_CUSTOMIZATOR_TOKENS[token])
+						print LOG_CUST_FUNCTION + token + '->' + '*' * len(SB_CUSTOMIZATOR_TOKENS[token]) + ' (masked)'
 					else:
-						print LOG_CUST_FUNCTION + token + '->' + SB_CUSTOMIZATOR_TOKENS[token] + ' (masked)'
+						print LOG_CUST_FUNCTION + token + '->' + SB_CUSTOMIZATOR_TOKENS[token]
 					sbentryAsString = sbentryAsString.replace(token, SB_CUSTOMIZATOR_TOKENS[token])
 			
 			jarEntry.setData(sbentryAsString.encode('utf-8'))
