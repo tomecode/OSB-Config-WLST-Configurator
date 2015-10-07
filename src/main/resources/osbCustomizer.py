@@ -2,7 +2,7 @@
 #
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
-#	Version:                        1.1.0
+#	Version:                        1.1.8
 #	Description:
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
