@@ -2,11 +2,12 @@
 #
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
-#	Version:                        1.1.7
+#	Version:                        1.1.0
 #	Description:
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#	1.1.8	Added support for work managers on http bizrefs.
 #	1.1.7	Updated for sb inbound services
 #	1.1.6	Fixed bug preventing customisation of multiple files at once
 # 	1.1.5 	Updated to properly support proxy service inbound properties
@@ -1187,6 +1188,9 @@ def http_businessservice_requestencoding(entry, val):
 def http_businessservice_responseencoding(entry, val):
 	getHttpEndPointConfiguration(entry).setResponseEncoding(val)
 
+def http_businessservice_dispatchpolicy(entry, val):
+	getHttpEndPointConfiguration(entry).setDispatchPolicy(val)
+
 def http_businessservice_connectiontimeout(entry, val):
 	getHttpOutboundProperties(entry).setConnectionTimeout(val)
 	
@@ -1744,6 +1748,9 @@ def sb_proxyservice_pipelinealerting_alertlevel(entry, val):
 def sb_proxyservice_endpointuri(entry, val):
 	changeEndpointUri(convertToTuple(val),entry)
 
+def sb_proxyservice_dispatchpolicy(entry, val):
+	getSBEndPointConfiguration(entry).setDispatchPolicy(val)
+
 def sb_proxyservice_ssluse(entry, val):
 	getSbInboundProperties(entry).setUseSsl(val)
 
@@ -1807,7 +1814,10 @@ def sb_businessservice_retryapplicationerrors(entry, val):
 
 def sb_businessservice_retryinterval(entry, val):
 	getCommonOutboundProperties(entry).setRetryInterval(val)
-	
+
+def sb_businessservice_dispatchpolicy(entry, val):
+	getSBEndPointConfiguration(entry).setDispatchPolicy(val)
+
 def sb_businessservice_providerid(entry, val):
 	endPointConfiguration=entry.getEndpointConfig()
 	if val.lower() == 'http' and endPointConfiguration.getProviderId() != 'http':
