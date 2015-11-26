@@ -2,11 +2,12 @@
 #
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
-#	Version:                        1.1.8
+#	Version:                        1.1.9
 #	Description:
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#	1.1.9	Added support for failure if tokens remain uncustomised
 #	1.1.8	Added support for work managers on http bizrefs.
 #	1.1.7	Updated for sb inbound services
 #	1.1.6	Fixed bug preventing customisation of multiple files at once
@@ -1958,6 +1959,28 @@ def tokenReplaceSbConfigFile(tokens, osbJarEntries):
 			jarEntry.setData(sbentryAsString.encode('utf-8'))
 	return osbJarEntries
 
+def checkForForbiddenTokens(forbiddenTokens, osbJarEntries):
+	print 'Checking for fobidden tokens in the following files:'
+	for jarEntry in osbJarEntries:
+		sbentry = loadEntryFactory(jarEntry)
+		hasPrintedHeader = False
+		if sbentry != None:
+			# do token replacement
+			
+			sbentryAsString = sbentry.toString()
+			foundTokens = [x for x in forbiddenTokens if x in sbentryAsString]
+			for forbiddenToken in foundTokens:
+				if (not hasPrintedHeader):
+					print LOG_CUST_FILE + jarEntry.getName()
+					hasPrintedHeader = True
+				
+				print LOG_CUST_FUNCTION + '"' + forbiddenToken + '" detected'
+				
+			if (foundTokens):
+				print ''
+				raise ValueError('Found ' + str(len(foundTokens)) + ' forbidden tokens')
+	return
+
 def executeCustomization():
 	customized_files = []
 	if 'SB_CUSTOMIZATOR' in globals():
@@ -1977,14 +2000,17 @@ def executeCustomization():
 					path = possibleMatches[0]
 					print LOG_CUST_FILE+' Expanded wildcard to: ' + path
 				else:
-					print LOG_CUST_FILE+' Error: ' + str(len(possibleMatches)) + ' matches found for ' + path + ' SB Config file; expecting 1.'
-					exit(exitcode=1)
+					message = str(len(possibleMatches)) + ' matches found for ' + path + ' SB Config file; expecting 1.'
+					print LOG_CUST_FILE+' Error: ' + message
+					raise ValueError(message)
 
 			absPath= os.path.abspath(path)
 			if os.path.isfile(absPath) and os.path.exists(absPath):
 				osbJarEntries= customizeSbConfigFile(sbFile,path)
 				if 'SB_CUSTOMIZATOR_TOKENS' in globals():
 					osbJarEntries=tokenReplaceSbConfigFile(SB_CUSTOMIZATOR_TOKENS, osbJarEntries)
+				if 'SB_CUSTOMIZATOR_FORBIDDEN_TOKENS' in globals():
+					checkForForbiddenTokens(SB_CUSTOMIZATOR_FORBIDDEN_TOKENS, osbJarEntries)
 				
 				#generate new sbconfig file
 				data=generateNewSBConfig(osbJarEntries)
@@ -2025,6 +2051,7 @@ except Exception, err:
 	traceback.print_exc()
 	#or
 	print sys.exc_info()[0]
+	exit(os.EX_SOFTWARE)
 
 
 exit()
