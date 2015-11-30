@@ -2,11 +2,12 @@
 #
 #	Author:                         Tomas (Tome) Frastia
 #	Web:                            http://www.TomeCode.com
-#	Version:                        1.1.9
+#	Version:                        ${project.version}
 #	Description:
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#	1.1.10	Prints version
 #	1.1.9	Added support for failure if tokens remain uncustomised
 #	1.1.8	Added support for work managers on http bizrefs.
 #	1.1.7	Updated for sb inbound services
@@ -36,7 +37,6 @@
 #		Customize: Proxy Service and Business Service with transport: JMS and HTTP
 ####################################################################
 
-
 import sys, traceback
 import os
 import os.path
@@ -46,6 +46,7 @@ import glob
 import fnmatch
 import re
 
+from xml.dom import minidom
 from javax.xml.namespace import QName
 
 from java.io import ByteArrayInputStream
@@ -2027,7 +2028,7 @@ try:
 	print ''
 	print '		OSB-Config-WLST-Configurator (TomeCode.com)'
 	print '	'
-	print '	'
+	print '		Version: ${project.version}'
 	print '	'
 
 	if len(sys.argv)!=2:
