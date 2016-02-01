@@ -7,6 +7,10 @@
 #	Copyright (c):					Tomas (Tome) Frastia | TomeCode.com
 #
 #	Changelog:
+#	1.1.15	Sets wlst exitcode on failure so calling script can detect failed deployment
+#	1.1.14	Added ability to configure http business service throttling when no throttling entry exists in business service source
+#	1.1.13	Added ability to configure http business service throttling
+#	1.1.11	Changed session name
 #	1.1.10	Prints version
 #	1.1.9	Added support for failure if tokens remain uncustomised
 #	1.1.8	Added support for work managers on http bizrefs.
@@ -310,7 +314,7 @@ def connectToOSB():
 # Utility function to load a session MBeans
 #===================================================================
 def createOSBSession():
-	sessionName  = "ScriptSession" + str(System.currentTimeMillis())
+	sessionName  = "BulkDeploy_" + str(System.currentTimeMillis())
 	sessionMBean = findService(SessionManagementMBean.NAME, SessionManagementMBean.TYPE)
 	sessionMBean.createSession(sessionName)
 	print '	..OSB Session Created: ' + sessionName
@@ -327,11 +331,15 @@ def createImportProject(ALSBConfigurationMBean):
 	alsbImportPlan.setPreserveExistingSecurityAndPolicyConfig(False)
 	return ALSBConfigurationMBean.importUploaded(alsbImportPlan)
 
-def uploadSbCofnigToOSB(ALSBConfigurationMBean, sbConfigJar):
+def uploadSbConfigToOSB(ALSBConfigurationMBean, sbConfigJar):
 	ALSBConfigurationMBean.uploadJarFile(readBinaryFile(sbConfigJar))
 	print '		..Uploaded: ' + sbConfigJar
 	importResult= createImportProject(ALSBConfigurationMBean)
 
+def showVersionSummary():
+	print 'Server: ' + version
+	print 'Java..: ' + sys.platform
+	print 'Jython: ' + sys.version
 
 def deployToOsb(files):
 
@@ -340,6 +348,7 @@ def deployToOsb(files):
 
 		try:
 			if connectToOSB()== True:
+				showVersionSummary()
 				#create new session
 				sessionMBean, sessionName = createOSBSession()
 
@@ -347,7 +356,7 @@ def deployToOsb(files):
 
 				#simple import without customization
 				for file in files:
-					uploadSbCofnigToOSB(ALSBConfigurationMBean,file)
+					uploadSbConfigToOSB(ALSBConfigurationMBean,file)
 
 				print '		..Commiting session, please wait, this can take a while...'
 				sessionMBean.activateSession(sessionName, "Import from wlst")
@@ -358,6 +367,9 @@ def deployToOsb(files):
 			dumpStack()
 			if sessionMBean != None:
 				sessionMBean.discardSession(sessionName)
+				print 'Session discarded.'
+			print 'Setting exitcode to 5'
+			exit(exitcode=5)
 	else:
 		print 'Deployment to OSB is disabled'
 
@@ -404,6 +416,12 @@ def getTransactions(serviceDefinition):
 	if transactions==None:
 		return serviceDefinition.getCoreEntry().addNewTransactions()
 	return transactions
+
+def getThrottling(serviceDefinition):
+	throttling=serviceDefinition.getCoreEntry().getThrottling()
+	if throttling==None:
+		return serviceDefinition.getCoreEntry().addNewThrottling()
+	return throttling
 
 def getHttpInboundProperties(serviceDefinition):
 	httpEndPointConfiguration = getHttpEndPointConfiguration(serviceDefinition)
@@ -1123,7 +1141,6 @@ def jms_proxyservice_pipelinealerting_isenabled(entry, val):
 def jms_proxyservice_pipelinealerting_alertlevel(entry, val):
 	local_proxyservice_pipelinealerting_alertlevel(entry, val)
 
-
 def jms_proxyservice_policy(entry, val):
 	policyExpression, provider=createPolicyExpression(val)
 	setupPolicyExpression(entry, policyExpression, provider)
@@ -1146,6 +1163,21 @@ def http_businessservice_slaalerting(entry, val):
 
 def http_businessservice_pipelinealerting(entry, val):
 	return True
+	
+def  http_businessservice_throttling(entry, val):
+	return True
+	
+def http_businessservice_throttling_enabled(entry, val):
+	getThrottling(entry).setEnabled(val)
+
+def http_businessservice_throttling_capacity(entry, val):
+	getThrottling(entry).setCapacity(val)
+
+def http_businessservice_throttling_maxqueuelength(entry, val):
+	getThrottling(entry).setMaxQueueLength(val)
+	
+def http_businessservice_throttling_timetolive(entry, val):
+	getThrottling(entry).setTimeToLive(val)
 
 def http_businessservice_monitoring_isenabled(entry, val):
 	local_proxyservice_monitoring_isenabled(entry, val)
@@ -1961,7 +1993,7 @@ def tokenReplaceSbConfigFile(tokens, osbJarEntries):
 	return osbJarEntries
 
 def checkForForbiddenTokens(forbiddenTokens, osbJarEntries):
-	print 'Checking for fobidden tokens in the following files:'
+	print 'Checking for forbidden tokens in the following files:'
 	for jarEntry in osbJarEntries:
 		sbentry = loadEntryFactory(jarEntry)
 		hasPrintedHeader = False
@@ -2032,11 +2064,11 @@ try:
 	print '	'
 
 	if len(sys.argv)!=2:
-		print '	Not found OSB Customization file!'
+		print '	Wrong number of arguments: OSB Customization file not found!'
 		print '	Execute: ./osbCustomizer.(sh/cmd) osbCustomizer.properties'
 		print '	'
 		print '	'
-		exit()
+		exit(exitcode=1)
 
 	f=sys.argv[1]
 
@@ -2052,7 +2084,8 @@ except Exception, err:
 	traceback.print_exc()
 	#or
 	print sys.exc_info()[0]
-	exit(os.EX_SOFTWARE)
+	print 'Setting exitcode=1'
+	exit(exitcode=1)
 
 
-exit()
+exit(exitcode=0)
