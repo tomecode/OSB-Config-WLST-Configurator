@@ -24,7 +24,7 @@
 				<excludes>
 					<exclude>*.*</exclude>
 				</excludes>
-				<filtering>false</filtering>
+				<filtering>true</filtering>
 			</resource>
 		</resources>
 		<plugins>
