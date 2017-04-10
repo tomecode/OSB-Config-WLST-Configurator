@@ -33,3 +33,6 @@ The OSB-Config-WLST-Configurator is a simple the WLST script that contains sever
 For more information about [OSB-Config-WLST-Configurator](http://osb-config-wlst-configurator.tomecode.com/), please visit [wiki pages](https://github.com/tomecode/OSB-Config-WLST-Configurator/wiki/OSB-Config-WLST-Configurator) or download latest [OSB-Config-WLST-Configurator release](https://github.com/tomecode/OSB-Config-WLST-Configurator/releases).
 
 [![Build Status](https://travis-ci.org/TrentBartlem/OSB-Config-WLST-Configurator.svg?branch=master)](https://travis-ci.org/TrentBartlem/OSB-Config-WLST-Configurator)
+
+
+This project is member of [OSB utilities](https://github.com/tomecode/osb-utilities)
